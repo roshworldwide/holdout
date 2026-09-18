@@ -1,5 +1,3 @@
-"""Tests for the CLI (holdout.cli) and the HTML report (holdout.report)."""
-
 import json
 from pathlib import Path
 
@@ -27,7 +25,6 @@ not_a_target = 42
 
 @pytest.fixture()
 def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A temp project: cases.jsonl + an importable targets module."""
     lines = [
         json.dumps({"input": f"q{i}", "reference": "yes", "id": f"c{i:03d}"}) for i in range(40)
     ]
@@ -39,17 +36,11 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def _run_both(project: Path) -> tuple[str, str]:
-    """Run good and bad targets via the CLI; return their run id prefixes."""
     assert main(["run", "cases.jsonl", "--target", "cli_targets_mod:good", "--seed", "7"]) == 0
     assert main(["run", "cases.jsonl", "--target", "cli_targets_mod:bad", "--seed", "7"]) == 0
     infos = RunStore(project / ".holdout").runs()
     by_target = {i.target_name: i.run_id for i in infos}
     return by_target["good"], by_target["bad"]
-
-
-# ---------------------------------------------------------------------------
-# CLI commands
-# ---------------------------------------------------------------------------
 
 
 def test_run_stores_and_prints_ci(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -68,13 +59,12 @@ def test_compare_exit_codes_and_ledger(project: Path, capsys: pytest.CaptureFixt
 
     code = main(["compare", good[:12], bad[:12]])
     out = capsys.readouterr().out
-    assert code == 1  # regression detected
+    assert code == 1
     assert "REGRESSED" in out
     assert "mcnemar" in out
     assert "has been used 1 time(s)" in out
-    assert "[ok]" in out  # the ledger level tag survives Rich markup parsing
+    assert "[ok]" in out
 
-    # Identical runs: exit 0; --no-ledger leaves the count unchanged.
     code = main(["compare", good[:12], good[:12], "--no-ledger"])
     out = capsys.readouterr().out
     assert code == 0
@@ -96,8 +86,8 @@ def test_report_single_and_comparison(project: Path) -> None:
     single = (project / "run.html").read_text(encoding="utf-8")
     assert single.startswith("<!doctype html")
     assert "exact_match" in single
-    assert "#C9A876" in single  # Starlight Gold
-    assert "http" not in single  # fully self-contained, air-gap safe
+    assert "#C9A876" in single
+    assert "http" not in single
 
     assert main(["report", good[:12], bad[:12], "-o", "cmp.html"]) == 0
     cmp_html = (project / "cmp.html").read_text(encoding="utf-8")
@@ -119,9 +109,9 @@ def test_power_paths(capsys: pytest.CaptureFixture[str]) -> None:
     assert "sd_diff = 0.3162" in out
     assert "n=" in out
 
-    assert main(["power", "--sd", "0.35"]) == 2  # neither --n nor --mde
-    assert main(["power", "--n", "10", "--mde", "0.1", "--sd", "0.35"]) == 2  # both
-    assert main(["power", "--n", "10"]) == 2  # no sd and no p01/p10
+    assert main(["power", "--sd", "0.35"]) == 2
+    assert main(["power", "--n", "10", "--mde", "0.1", "--sd", "0.35"]) == 2
+    assert main(["power", "--n", "10"]) == 2
 
 
 def test_check_clean_and_contaminated(project: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -171,13 +161,8 @@ def test_compare_markdown_for_pr_comments(
     assert "**REGRESSED**" in out
     assert "| metric | verdict | effect | CI | test | p (adj) | n |" in out
     assert "| `exact_match` | REGRESSED |" in out
-    assert "> eval 'cases' has been used" in out  # ledger note rides along
-    assert "\x1b[" not in out  # no ANSI styling in markdown mode
-
-
-# ---------------------------------------------------------------------------
-# Reference resolution
-# ---------------------------------------------------------------------------
+    assert "> eval 'cases' has been used" in out
+    assert "\x1b[" not in out
 
 
 def test_make_scorer_specs() -> None:
@@ -217,11 +202,6 @@ def test_load_target_refs(project: Path) -> None:
         load_target("cli_targets_mod:nope")
 
 
-# ---------------------------------------------------------------------------
-# HTML rendering details
-# ---------------------------------------------------------------------------
-
-
 def _small_runs() -> tuple[Eval, StaticTarget, StaticTarget]:
     cases = [Case(input=f"q{i}", reference="yes", id=f"c{i}") for i in range(12)]
     ev = Eval("<b>esc & test</b>", cases, [ExactMatch()])
@@ -244,10 +224,9 @@ def test_comparison_report_renders_bars_and_warnings() -> None:
     a = run_eval(ev, target=good, seed=1)
     b = run_eval(ev, target=bad, seed=1)
     html = render_comparison_report(compare(a, b, seed=0))
-    assert html.count("<svg") == 2  # baseline + candidate error bars
+    assert html.count("<svg") == 2
     assert "b&lt;ad" in html
     assert "Δ=" in html
-    # Insufficient-data row renders the note instead of bars.
     only_one = StaticTarget({"q0": "yes"}, name="one")
     c = run_eval(ev, target=only_one, seed=1)
     html2 = render_comparison_report(compare(a, c, seed=0))

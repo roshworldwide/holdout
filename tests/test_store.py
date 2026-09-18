@@ -1,8 +1,3 @@
-"""Tests for the run store: content-addressed persistence, indexing, integrity.
-
-Fully offline: every Run comes from StaticTarget plus local scorers.
-"""
-
 import json
 import shutil
 from dataclasses import replace
@@ -26,13 +21,10 @@ QA: dict[str, str] = {
     "opposite of hot?": "cold",
 }
 
-# One wrong answer => exact_match 0.75, non-degenerate intervals.
 RESPONSES: dict[str, str] = {**QA, "2+2?": "5"}
 
 
 class LengthRatio(Scorer):
-    """Continuous scorer: output length scaled into [0, 1]."""
-
     @property
     def name(self) -> str:
         return "length_ratio"
@@ -57,12 +49,6 @@ def make_run(
 
 
 def two_runs_sharing_first_hex_char() -> tuple[Run, Run]:
-    """Deterministically find two runs whose run ids share their first char.
-
-    run_id is a SHA-256 hex digest, so the first character has 16 possible
-    values: by pigeonhole, at most 17 seeds are needed. Run ids are
-    deterministic, so the loop always finds the same pair.
-    """
     seen: dict[str, Run] = {}
     for seed in range(32):
         r = make_run(seed=seed)
@@ -71,9 +57,6 @@ def two_runs_sharing_first_hex_char() -> tuple[Run, Run]:
             return seen[first], r
         seen[first] = r
     raise AssertionError("unreachable: 32 distinct runs must collide on 16 hex chars")
-
-
-# --- save / load round-trip ---------------------------------------------------
 
 
 def test_save_load_round_trip_preserves_run_id_and_metrics(tmp_path: Path) -> None:
@@ -103,11 +86,8 @@ def test_save_is_idempotent(tmp_path: Path) -> None:
 
     assert p1 == p2
     assert files_after_first == files_after_second
-    assert len(files_after_second) == 1  # no duplicates, no leftover tmp files
+    assert len(files_after_second) == 1
     assert len(store) == 1
-
-
-# --- load by reference --------------------------------------------------------
 
 
 def test_load_by_unique_prefix(tmp_path: Path) -> None:
@@ -118,7 +98,7 @@ def test_load_by_unique_prefix(tmp_path: Path) -> None:
     store.save(r2)
 
     prefix = r1.run_id[:16]
-    assert not r2.run_id.startswith(prefix)  # deterministic: ids are content hashes
+    assert not r2.run_id.startswith(prefix)
     assert store.load(prefix).run_id == r1.run_id
 
 
@@ -150,11 +130,7 @@ def test_empty_ref_raises_key_error(tmp_path: Path) -> None:
         store.load("")
 
 
-# --- runs(): listing, ordering, filters ----------------------------------------
-
-
 def stamped_runs() -> list[Run]:
-    """Three distinct runs with controlled, strictly increasing created_at."""
     base = [make_run(seed=s) for s in (0, 1, 2)]
     stamps = [
         "2026-01-01T00:00:00+00:00",
@@ -167,7 +143,7 @@ def stamped_runs() -> list[Run]:
 def test_runs_lists_newest_first(tmp_path: Path) -> None:
     store = RunStore(tmp_path / "store")
     oldest, middle, newest = stamped_runs()
-    for r in (middle, newest, oldest):  # save order deliberately shuffled
+    for r in (middle, newest, oldest):
         store.save(r)
 
     infos = store.runs()
@@ -211,9 +187,6 @@ def test_runs_info_fields_and_short_run_id(tmp_path: Path) -> None:
     assert r.run_id.startswith(info.short_run_id)
 
 
-# --- latest() -------------------------------------------------------------------
-
-
 def test_latest_with_filters_and_none_when_nothing_matches(tmp_path: Path) -> None:
     store = RunStore(tmp_path / "store")
     assert store.latest() is None
@@ -221,7 +194,7 @@ def test_latest_with_filters_and_none_when_nothing_matches(tmp_path: Path) -> No
     oldest, middle, newest = stamped_runs()
     alt = replace(
         make_run(seed=9, eval_name="other", target_name="alt"),
-        created_at="2025-12-31T00:00:00+00:00",  # older than every smoke run
+        created_at="2025-12-31T00:00:00+00:00",
     )
     for r in (oldest, middle, newest, alt):
         store.save(r)
@@ -243,9 +216,6 @@ def test_latest_with_filters_and_none_when_nothing_matches(tmp_path: Path) -> No
     assert store.latest(target_name="nope") is None
 
 
-# --- reindex() --------------------------------------------------------------------
-
-
 def test_reindex_rebuilds_after_index_deletion(tmp_path: Path) -> None:
     root = tmp_path / "store"
     store = RunStore(root)
@@ -256,7 +226,7 @@ def test_reindex_rebuilds_after_index_deletion(tmp_path: Path) -> None:
 
     (root / "index.sqlite3").unlink()
     rebuilt = RunStore(root)
-    assert len(rebuilt) == 0  # fresh index knows nothing yet
+    assert len(rebuilt) == 0
 
     assert rebuilt.reindex() == 2
     assert {i.run_id for i in rebuilt.runs()} == {r1.run_id, r2.run_id}
@@ -279,9 +249,6 @@ def test_reindex_merges_artifacts_copied_from_another_store(tmp_path: Path) -> N
     assert store_b.load(rb.run_id).run_id == rb.run_id
 
 
-# --- tamper detection ---------------------------------------------------------------
-
-
 def test_tampered_artifact_fails_content_address_verification(tmp_path: Path) -> None:
     store = RunStore(tmp_path / "store")
     r = make_run(seed=0)
@@ -294,9 +261,6 @@ def test_tampered_artifact_fails_content_address_verification(tmp_path: Path) ->
 
     with pytest.raises(ValueError, match="content-address verification"):
         store.load(r.run_id)
-
-
-# --- dunder methods -------------------------------------------------------------------
 
 
 def test_len_and_repr(tmp_path: Path) -> None:

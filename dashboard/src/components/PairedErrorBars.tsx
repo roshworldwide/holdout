@@ -1,6 +1,3 @@
-/** The signature visual: baseline vs candidate CIs on one shared axis.
- *  Bars spring outward from their point estimate on mount. */
-
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import type { Estimate } from "../api";
@@ -111,7 +108,6 @@ export function PairedErrorBars({
 
   const valueLabel = (est: Estimate, y: number, color: string) => {
     if (!geom) return null;
-    // Place after the high cap; flip to before the low cap near the edge.
     const fitsRight = geom.x(est.ci_high) + 58 < width;
     const xEnd = fitsRight ? geom.x(est.ci_high) + 12 : geom.x(est.ci_low) - 12;
     return (
@@ -136,7 +132,6 @@ export function PairedErrorBars({
     <div ref={ref} style={{ width: "100%" }}>
       {geom && (
         <svg width={width} height={HEIGHT} style={{ display: "block" }} aria-hidden>
-          {/* vertical gridlines + axis tick labels */}
           {geom.ticks.map((t) => (
             <g key={t}>
               <line
@@ -160,7 +155,6 @@ export function PairedErrorBars({
             </g>
           ))}
 
-          {/* dashed reference at the baseline estimate */}
           <motion.line
             x1={geom.x(baseline.value)}
             x2={geom.x(baseline.value)}
@@ -175,7 +169,6 @@ export function PairedErrorBars({
             transition={{ delay: 0.45, duration: 0.4 }}
           />
 
-          {/* row labels */}
           <text x={0} y={ROW_B - 8} fontSize={10} fontWeight={600} fill="var(--text-3)" letterSpacing="0.07em">
             BASELINE
           </text>

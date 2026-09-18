@@ -1,12 +1,3 @@
-"""Air-gapped evaluation on Apple silicon with MLX: in-process inference.
-
-Prereqs (Apple silicon only):
-    pip install 'holdout[mlx]'
-    # First run downloads the model; every run after that is fully offline.
-
-Run: python examples/05_mlx_airgapped.py
-"""
-
 import sys
 
 from holdout import Case, Eval, run
@@ -31,7 +22,6 @@ try:
 except MissingDependencyError as exc:
     sys.exit(str(exc))
 
-# MLX inference is in-process and single-stream; keep concurrency at 1.
 result = run(ev, target=target, seed=42, max_concurrency=1)
 print(result.summary())
 print()

@@ -1,5 +1,3 @@
-/** Number/date formatting helpers, tuned for stats honesty + Apple polish. */
-
 export function fmtPct(v: number, decimals = 1): string {
   return `${(v * 100).toFixed(decimals)}%`;
 }
@@ -8,7 +6,6 @@ export function fmtCI(low: number, high: number): string {
   return `${(low * 100).toFixed(1)}–${(high * 100).toFixed(1)}%`;
 }
 
-/** Signed effect in percentage points: “−10.8 pp”. */
 export function fmtEffect(v: number): string {
   const pts = v * 100;
   const sign = pts > 0 ? "+" : pts < 0 ? "−" : "±";
@@ -42,7 +39,6 @@ export function fmtLatency(s: number | null): string {
   return `${s.toFixed(2)} s`;
 }
 
-/** A nicely-rounded tick step for an axis spanning `range`. */
 export function niceStep(range: number, targetTicks = 4): number {
   const raw = range / Math.max(1, targetTicks);
   const mag = 10 ** Math.floor(Math.log10(raw));

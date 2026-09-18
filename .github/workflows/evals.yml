@@ -1,7 +1,3 @@
-# Dogfood: this repo gates itself with its own action. The eval runs a
-# deterministic offline target (no model calls, no keys) against a committed
-# baseline artifact; the gate fails only on statistically significant
-# regression and posts the comparison table on PRs.
 name: evals
 
 on:

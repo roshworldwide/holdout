@@ -1,5 +1,3 @@
-"""Tests for holdout.testing assertions and the pytest plugin."""
-
 import inspect
 from pathlib import Path
 
@@ -34,11 +32,6 @@ def make_run(wrong: set[int], n: int = 40, name: str = "t") -> Run:
     return run(ev, target=target, seed=7)
 
 
-# ---------------------------------------------------------------------------
-# assert_no_regression
-# ---------------------------------------------------------------------------
-
-
 def test_no_regression_passes_on_identical_runs() -> None:
     a, b = make_run(set(), name="a"), make_run(set(), name="b")
     cmp = assert_no_regression(a, b, seed=0)
@@ -57,7 +50,7 @@ def test_no_regression_fails_with_table_in_message() -> None:
         assert_no_regression(a, b, seed=0)
     msg = str(exc.value)
     assert "regression detected on: exact_match" in msg
-    assert "Δ=" in msg and "CI" in msg  # the full comparison table travels along
+    assert "Δ=" in msg and "CI" in msg
 
 
 def test_no_regression_refuses_to_certify_insufficient_data() -> None:
@@ -66,11 +59,6 @@ def test_no_regression_refuses_to_certify_insufficient_data() -> None:
     b = run(ev, target=StaticTarget({"q0": "yes"}, name="b"), seed=1)
     with pytest.raises(AssertionError, match="refusing to certify"):
         assert_no_regression(a, b, seed=0)
-
-
-# ---------------------------------------------------------------------------
-# assert_significant_improvement
-# ---------------------------------------------------------------------------
 
 
 def test_improvement_passes_for_any_and_named_metric() -> None:
@@ -92,15 +80,9 @@ def test_improvement_fails_on_unknown_metric() -> None:
 
 
 def test_improvement_fails_when_a_regression_coexists() -> None:
-    # exact_match regresses while no other metric improves: never "clean".
     a, b = make_run(set(), name="a"), make_run(set(range(10)), name="b")
     with pytest.raises(AssertionError, match="not a clean improvement"):
         assert_significant_improvement(a, b, seed=0)
-
-
-# ---------------------------------------------------------------------------
-# assert_adequately_powered
-# ---------------------------------------------------------------------------
 
 
 def test_power_passes_on_zero_variance_and_returns_empty() -> None:
@@ -110,7 +92,7 @@ def test_power_passes_on_zero_variance_and_returns_empty() -> None:
 
 def test_power_passes_when_n_is_ample() -> None:
     a = make_run(set(), n=200, name="a")
-    b = make_run({0, 1, 2, 3, 4, 5}, n=200, name="b")  # 3% discordance
+    b = make_run({0, 1, 2, 3, 4, 5}, n=200, name="b")
     analyses = assert_adequately_powered(a, b, mde=0.2)
     assert "exact_match" in analyses
     assert analyses["exact_match"].n <= 200
@@ -118,7 +100,7 @@ def test_power_passes_when_n_is_ample() -> None:
 
 def test_power_fails_when_underpowered() -> None:
     a = make_run(set(), n=10, name="a")
-    b = make_run({0, 2, 4, 6, 8}, n=10, name="b")  # 50% discordance
+    b = make_run({0, 2, 4, 6, 8}, n=10, name="b")
     with pytest.raises(AssertionError, match=r"have 10 pairs, need \d+"):
         assert_adequately_powered(a, b, mde=0.02)
 
@@ -128,11 +110,6 @@ def test_power_metric_variant_and_no_shared_metrics() -> None:
     b = make_run({0, 2, 4, 6, 8}, n=10, name="b")
     with pytest.raises(AssertionError, match="underpowered"):
         assert_adequately_powered(a, b, mde=0.02, metric="exact_match")
-
-
-# ---------------------------------------------------------------------------
-# llm_eval decorator
-# ---------------------------------------------------------------------------
 
 
 def test_llm_eval_injects_run_and_hides_parameter(tmp_path: Path) -> None:
@@ -151,13 +128,7 @@ def test_llm_eval_injects_run_and_hides_parameter(tmp_path: Path) -> None:
     check()
     assert seen[0].eval_name == "plugin-test"
     assert seen[0].seed == 3
-    # The run was persisted before the test body executed.
     assert RunStore(tmp_path).load(seen[0].run_id).run_id == seen[0].run_id
-
-
-# ---------------------------------------------------------------------------
-# pytest plugin (exercised in a fresh pytester project)
-# ---------------------------------------------------------------------------
 
 
 def test_marker_is_registered(pytester: pytest.Pytester) -> None:

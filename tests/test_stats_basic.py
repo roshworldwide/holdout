@@ -1,5 +1,3 @@
-"""Tests for holdout.stats: the Estimate type and the percentile bootstrap."""
-
 import numpy as np
 import pytest
 from hypothesis import given, settings
@@ -13,11 +11,6 @@ from holdout.stats.estimate import Estimate
 
 def _median(sample: NDArray[np.float64]) -> float:
     return float(np.median(sample))
-
-
-# ---------------------------------------------------------------------------
-# Estimate
-# ---------------------------------------------------------------------------
 
 
 def test_str_renders_value_ci_n_and_method() -> None:
@@ -79,11 +72,6 @@ def test_to_dict_contents() -> None:
     }
 
 
-# ---------------------------------------------------------------------------
-# bootstrap_ci
-# ---------------------------------------------------------------------------
-
-
 def test_same_seed_and_data_gives_identical_estimate() -> None:
     rng = np.random.default_rng(0)
     vals = [float(v) for v in rng.normal(size=60)]
@@ -98,7 +86,6 @@ def test_different_seed_gives_different_interval() -> None:
     vals = [float(v) for v in rng.normal(size=60)]
     a = bootstrap_ci(vals, n_resamples=2_000, seed=0)
     b = bootstrap_ci(vals, n_resamples=2_000, seed=1)
-    # The point estimate is seed-independent; the resampled interval is not.
     assert a.value == b.value
     assert (a.ci_low, a.ci_high) != (b.ci_low, b.ci_high)
 
@@ -147,7 +134,6 @@ def test_custom_statistic_median_is_honored() -> None:
     est = bootstrap_ci(vals, statistic=_median, n_resamples=4_000, seed=11)
     assert est.value == pytest.approx(sample_median)
     assert est.ci_low <= sample_median <= est.ci_high
-    # Heavily right-skewed data: a median interval sits well below the mean.
     assert est.ci_high < sample_mean
 
     est_mean = bootstrap_ci(vals, n_resamples=4_000, seed=11)
@@ -158,7 +144,7 @@ def test_custom_statistic_median_is_honored() -> None:
 def test_binary_data_ci_within_unit_interval() -> None:
     rng = np.random.default_rng(5)
     vals = [float(v) for v in rng.integers(0, 2, size=40)]
-    assert 0.0 < float(np.mean(vals)) < 1.0  # non-degenerate sample
+    assert 0.0 < float(np.mean(vals)) < 1.0
     est = bootstrap_ci(vals, n_resamples=5_000, seed=6)
     assert 0.0 <= est.ci_low <= est.value <= est.ci_high <= 1.0
 
@@ -167,7 +153,7 @@ def test_metadata_fields_are_recorded() -> None:
     est = bootstrap_ci([1.0, 2.0, 3.0, 4.0], level=0.9, n_resamples=500, seed=0)
     assert est.n == 4
     assert est.level == 0.9
-    assert est.method == "bootstrap-bca"  # BCa is the default since M2
+    assert est.method == "bootstrap-bca"
     pct = bootstrap_ci(
         [1.0, 2.0, 3.0, 4.0], level=0.9, n_resamples=500, seed=0, method="percentile"
     )
@@ -194,11 +180,6 @@ def test_mean_ci_stays_within_data_range_and_is_deterministic(xs: list[float], s
     assert lo - tol <= est.value <= hi + tol
 
 
-# ---------------------------------------------------------------------------
-# Cross-validation against scipy
-# ---------------------------------------------------------------------------
-
-
 def test_matches_scipy_percentile_bootstrap() -> None:
     rng = np.random.default_rng(42)
     data: NDArray[np.float64] = rng.normal(loc=0.7, scale=1.0, size=100)
@@ -218,8 +199,6 @@ def test_matches_scipy_percentile_bootstrap() -> None:
     scipy_low = float(res.confidence_interval.low)
     scipy_high = float(res.confidence_interval.high)
 
-    # Loose Monte-Carlo tolerance: two independent 20k-resample percentile
-    # bootstraps agree to well within 0.02 of the data scale.
     assert est.ci_low == pytest.approx(scipy_low, abs=0.02 * scale)
     assert est.ci_high == pytest.approx(scipy_high, abs=0.02 * scale)
     assert est.value == pytest.approx(float(np.mean(data)))

@@ -1,5 +1,3 @@
-/** Minimal hand-drawn icon set: 1.5px stroke, rounded caps, outline style. */
-
 interface IconProps {
   size?: number;
 }

@@ -1,5 +1,3 @@
-"""Tests for holdout.providers: base, ollama, embeddings, static, and lazy imports."""
-
 import importlib.util
 import json
 import subprocess
@@ -16,13 +14,8 @@ from holdout.providers.embeddings import OllamaEmbeddings
 from holdout.providers.ollama import Ollama
 from holdout.providers.static import StaticTarget
 
-# ---------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------
-
 
 def _chat_body(content: str = "ok") -> dict[str, object]:
-    """A complete successful /api/chat response body."""
     return {
         "model": "llama3.2:latest",
         "message": {"role": "assistant", "content": content},
@@ -32,18 +25,11 @@ def _chat_body(content: str = "ok") -> dict[str, object]:
 
 
 class EchoProvider(ModelProvider):
-    """Minimal concrete provider for exercising ModelProvider itself."""
-
     provider_id = "echo"
 
     async def _generate_once(self, prompt: str, *, seed: int | None) -> Completion:
         del seed
         return Completion(text=prompt)
-
-
-# ---------------------------------------------------------------------------
-# Ollama: outgoing request shape
-# ---------------------------------------------------------------------------
 
 
 async def test_ollama_request_includes_system_and_seed() -> None:
@@ -99,11 +85,6 @@ async def test_ollama_request_omits_system_and_seed_when_absent() -> None:
     assert "seed" not in payload["options"]
 
 
-# ---------------------------------------------------------------------------
-# Ollama: response parsing
-# ---------------------------------------------------------------------------
-
-
 async def test_ollama_parses_completion_fields() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_chat_body("hello there"))
@@ -133,14 +114,9 @@ async def test_ollama_completion_defaults_when_optional_fields_missing() -> None
         await provider.aclose()
 
     assert completion.text == "x"
-    assert completion.model == "llama3.2"  # falls back to the configured model
+    assert completion.model == "llama3.2"
     assert completion.input_tokens is None
     assert completion.output_tokens is None
-
-
-# ---------------------------------------------------------------------------
-# Ollama: retry behavior (backoff_base=0.0 so tests are instant)
-# ---------------------------------------------------------------------------
 
 
 async def test_ollama_retries_500_then_succeeds_in_two_attempts() -> None:
@@ -213,7 +189,7 @@ async def test_ollama_400_fails_immediately_without_retry() -> None:
     finally:
         await provider.aclose()
 
-    assert len(requests) == 1  # client errors are not retried
+    assert len(requests) == 1
     cause = excinfo.value.cause
     assert isinstance(cause, httpx.HTTPStatusError)
     assert cause.response.status_code == 400
@@ -228,11 +204,6 @@ async def test_ollama_aclose_closes_client() -> None:
     assert provider._client.is_closed
 
 
-# ---------------------------------------------------------------------------
-# OllamaEmbeddings
-# ---------------------------------------------------------------------------
-
-
 async def test_embeddings_request_payload() -> None:
     requests: list[httpx.Request] = []
 
@@ -242,7 +213,7 @@ async def test_embeddings_request_payload() -> None:
 
     backend = OllamaEmbeddings("nomic-embed-text", transport=httpx.MockTransport(handler))
     try:
-        await backend.embed(("alpha", "beta"))  # a tuple must be sent as a JSON list
+        await backend.embed(("alpha", "beta"))
     finally:
         await backend.aclose()
 
@@ -277,11 +248,6 @@ async def test_embeddings_name_property() -> None:
         await custom_backend.aclose()
 
 
-# ---------------------------------------------------------------------------
-# ModelProvider base behavior
-# ---------------------------------------------------------------------------
-
-
 def test_provider_name_is_provider_colon_model() -> None:
     assert EchoProvider("my-model").name == "echo:my-model"
     assert (
@@ -299,7 +265,7 @@ def test_fingerprint_is_stable_across_identical_instances() -> None:
     a = EchoProvider("m", system="s", temperature=0.2, max_tokens=10)
     b = EchoProvider("m", system="s", temperature=0.2, max_tokens=10)
     assert a.fingerprint == b.fingerprint
-    assert a.fingerprint == a.fingerprint  # property is deterministic
+    assert a.fingerprint == a.fingerprint
 
 
 def test_fingerprint_changes_with_behavioral_settings() -> None:
@@ -318,11 +284,6 @@ def test_fingerprint_ignores_operational_settings() -> None:
     a = EchoProvider("m", timeout=1.0, max_retries=0, backoff_base=0.0)
     b = EchoProvider("m", timeout=300.0, max_retries=9, backoff_base=4.0)
     assert a.fingerprint == b.fingerprint
-
-
-# ---------------------------------------------------------------------------
-# StaticTarget
-# ---------------------------------------------------------------------------
 
 
 async def test_static_target_returns_mapped_responses() -> None:
@@ -360,11 +321,6 @@ async def test_static_target_ignores_seed() -> None:
     assert await target.generate("q") == await target.generate("q", seed=0)
 
 
-# ---------------------------------------------------------------------------
-# Lazy imports in holdout.providers
-# ---------------------------------------------------------------------------
-
-
 def test_lazy_import_exposes_sdk_free_providers() -> None:
     from holdout.providers import Ollama as LazyOllama
     from holdout.providers import StaticTarget as LazyStaticTarget
@@ -384,8 +340,6 @@ def test_dir_includes_every_public_name() -> None:
 
 
 def test_importing_providers_does_not_import_sdk_modules() -> None:
-    # Run in a fresh interpreter so this test cannot be polluted by other
-    # tests (or pass vacuously because something imported the SDKs earlier).
     code = (
         "import sys\n"
         "import holdout.providers\n"
@@ -399,10 +353,6 @@ def test_importing_providers_does_not_import_sdk_modules() -> None:
     )
     assert result.returncode == 0, result.stderr
 
-
-# ---------------------------------------------------------------------------
-# MissingDependencyError for optional SDK providers
-# ---------------------------------------------------------------------------
 
 _openai_installed = importlib.util.find_spec("openai") is not None
 _anthropic_installed = importlib.util.find_spec("anthropic") is not None

@@ -1,5 +1,3 @@
-"""The Eval: a named, content-addressed set of cases plus its scorers."""
-
 import json
 from collections.abc import Sequence
 from dataclasses import replace
@@ -12,25 +10,6 @@ from holdout.core.scoring import Scorer
 
 
 class Eval:
-    """A named set of :class:`Case` objects scored by one or more scorers.
-
-    Construction validates the eval eagerly: non-empty cases and scorers,
-    unique case ids (auto-assigned from content when omitted), unique scorer
-    names, and references present wherever a scorer requires them. An Eval
-    is immutable after construction and exposes a content fingerprint over
-    its cases, so two runs claiming the same eval provably measured the same
-    data.
-
-    Parameters
-    ----------
-    name
-        Eval name (e.g. ``"support-qa"``).
-    cases
-        The evaluation cases.
-    scorers
-        The scorers applied to every case.
-    """
-
     def __init__(self, name: str, cases: Sequence[Case], scorers: Sequence[Scorer]) -> None:
         if not name:
             raise ValueError("eval name must be non-empty")
@@ -69,26 +48,18 @@ class Eval:
 
     @property
     def name(self) -> str:
-        """The eval's name."""
         return self._name
 
     @property
     def cases(self) -> tuple[Case, ...]:
-        """The eval's cases, with ids assigned."""
         return self._cases
 
     @property
     def scorers(self) -> tuple[Scorer, ...]:
-        """The eval's scorers."""
         return self._scorers
 
     @property
     def fingerprint(self) -> str:
-        """Content hash of the eval's name and cases (its dataset identity).
-
-        Scorers are fingerprinted separately — the dataset and the
-        measurement are distinct identities.
-        """
         return fingerprint({"name": self._name, "cases": [c.to_dict() for c in self._cases]})
 
     @classmethod
@@ -99,20 +70,6 @@ class Eval:
         scorers: Sequence[Scorer],
         name: str | None = None,
     ) -> Self:
-        """Load an eval from a JSONL file.
-
-        Each line is an object with ``input`` (required) and optionally
-        ``reference``, ``id``, and ``metadata`` (string-to-string mapping).
-
-        Parameters
-        ----------
-        path
-            Path to the ``.jsonl`` file.
-        scorers
-            Scorers to attach.
-        name
-            Eval name; defaults to the file stem.
-        """
         p = Path(path)
         cases: list[Case] = []
         with p.open(encoding="utf-8") as f:

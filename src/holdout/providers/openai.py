@@ -1,5 +1,3 @@
-"""OpenAI provider (optional extra: ``pip install 'holdout[openai]'``)."""
-
 from typing import Any
 
 from holdout.core.target import Completion
@@ -8,23 +6,6 @@ from holdout.providers.base import ModelProvider
 
 
 class OpenAI(ModelProvider):
-    """Evaluate against an OpenAI chat model.
-
-    OpenAI accepts a ``seed`` parameter for best-effort determinism; holdout
-    passes the run seed through and defaults temperature to 0.0.
-
-    Parameters
-    ----------
-    model
-        Model name (e.g. ``"gpt-4o-mini"``).
-    api_key
-        API key; falls back to the ``OPENAI_API_KEY`` environment variable.
-    base_url
-        Optional override for OpenAI-compatible endpoints.
-
-    Other parameters are inherited from :class:`ModelProvider`.
-    """
-
     provider_id = "openai"
 
     def __init__(
@@ -53,19 +34,15 @@ class OpenAI(ModelProvider):
             from openai import AsyncOpenAI
         except ImportError as exc:
             raise MissingDependencyError("openai", "openai") from exc
-        # SDK retries are disabled: ModelProvider.generate is the single
-        # retry authority, so behavior is identical across providers.
         self._client = AsyncOpenAI(
             api_key=api_key, base_url=base_url, timeout=timeout, max_retries=0
         )
         self._base_url = base_url
 
     def _extra_config(self) -> dict[str, object]:
-        """Include a non-default base_url in the fingerprint."""
         return {"base_url": self._base_url} if self._base_url else {}
 
     def _is_retryable(self, exc: Exception) -> bool:
-        """Retry SDK connection errors, rate limits, and 5xx responses."""
         import openai
 
         if isinstance(exc, openai.APIConnectionError | openai.RateLimitError):
@@ -76,7 +53,6 @@ class OpenAI(ModelProvider):
         return super()._is_retryable(exc)
 
     async def _generate_once(self, prompt: str, *, seed: int | None) -> Completion:
-        """Make one chat-completions call."""
         messages: list[Any] = []
         if self.system is not None:
             messages.append({"role": "system", "content": self.system})

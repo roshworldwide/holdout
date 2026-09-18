@@ -1,5 +1,3 @@
-"""Tests for the local dashboard server: read-only JSON API over the store."""
-
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -95,7 +93,6 @@ def test_unknown_run_is_404_and_unknown_endpoint_is_404(server: tuple[str, str, 
 
 def test_server_is_read_only(server: tuple[str, str, str]) -> None:
     base, a, _b = server
-    # No mutating verb is implemented anywhere.
     assert httpx.post(f"{base}/api/runs", json={}).status_code == 501
     assert httpx.delete(f"{base}/api/runs/{a}").status_code == 501
     assert httpx.put(f"{base}/api/compare").status_code == 501
@@ -104,6 +101,5 @@ def test_server_is_read_only(server: tuple[str, str, str]) -> None:
 def test_static_root_responds_even_without_built_assets(server: tuple[str, str, str]) -> None:
     base, _, _ = server
     resp = httpx.get(f"{base}/")
-    # Either the bundled SPA (200 with html) or the helpful 503 explainer.
     assert resp.status_code in (200, 503)
     assert "html" in resp.headers["content-type"]

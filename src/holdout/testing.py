@@ -1,14 +1,3 @@
-"""Statistically honest assertions — the "pytest for LLMs" surface.
-
-These functions raise ``AssertionError`` with a full comparison table in
-the message, so a failing CI run tells you *which* metric moved, by how
-much, with what confidence — not just that a number changed.
-
-A note on semantics: :func:`assert_no_regression` fails on
-``insufficient_data`` as well as on a regression. If nothing could be
-tested, certifying "no regression" would be dishonest.
-"""
-
 import functools
 import inspect
 from collections.abc import Callable, Sequence
@@ -38,15 +27,6 @@ def assert_no_regression(
     n_resamples: int = 10_000,
     seed: int = 0,
 ) -> RunComparison:
-    """Assert that ``candidate`` did not significantly regress on any metric.
-
-    Fails when any metric regressed at the corrected significance level —
-    and also when *nothing could be tested* (``insufficient_data``),
-    because certifying "no regression" without evidence would be dishonest.
-    Passes on improvement or no significant change.
-
-    Returns the full :class:`RunComparison` so callers can log or store it.
-    """
     cmp = compare(
         baseline,
         candidate,
@@ -78,15 +58,6 @@ def assert_significant_improvement(
     n_resamples: int = 10_000,
     seed: int = 0,
 ) -> RunComparison:
-    """Assert that ``candidate`` significantly improved — and broke nothing.
-
-    With ``metric`` set, that specific metric must have improved at the
-    corrected level. Without it, at least one metric must have improved.
-    Either way, any significant regression on *any* metric fails the
-    assertion: an improvement that breaks something else is not shippable.
-
-    Returns the full :class:`RunComparison`.
-    """
     cmp = compare(
         baseline,
         candidate,
@@ -127,20 +98,6 @@ def assert_adequately_powered(
     alpha: float = 0.05,
     power: float = 0.80,
 ) -> dict[str, PowerAnalysis]:
-    """Assert the paired comparison can detect effects of size ``mde``.
-
-    For each shared metric (or just ``metric``), measures the observed SD
-    of per-pair differences and computes the sample size required to detect
-    ``mde`` at the stated alpha and power. Fails if the runs have fewer
-    paired cases than required — i.e. if a "no significant change" verdict
-    from this comparison would be statistically meaningless for effects of
-    the size you care about.
-
-    Metrics whose paired differences have zero variance are trivially
-    powered (any real effect would show) and pass.
-
-    Returns the per-metric :class:`PowerAnalysis` for reporting.
-    """
     metrics = (
         [metric]
         if metric is not None
@@ -162,7 +119,7 @@ def assert_adequately_powered(
         b = [b_scores[i] for i in ids]
         sd = sd_diff_from_scores(a, b)
         if sd == 0.0:
-            continue  # zero observed variance: trivially powered for any mde > 0
+            continue
         analysis = required_sample_size(mde, sd, alpha=alpha, power=power)
         analyses[m] = analysis
         if len(ids) < analysis.n:
@@ -186,27 +143,13 @@ def assert_no_leakage(
     threshold: float = 0.5,
     duplicate_threshold: float | None = 0.8,
 ) -> None:
-    """Assert the eval is not contaminated by the prompt and has no near-dupes.
-
-    Checks every case input/reference against ``corpus`` (a string, a list
-    of strings, or a Target — a provider's system prompt is extracted
-    automatically) using exact-substring and n-gram containment. With
-    ``duplicate_threshold`` set (default 0.8), also fails on near-duplicate
-    case pairs inside the eval, which silently inflate the effective sample
-    size. Pass ``duplicate_threshold=None`` to skip that check.
-
-    Raises
-    ------
-    AssertionError
-        With the full contamination/duplicate report in the message.
-    """
     from holdout.leakage.contamination import check_contamination
     from holdout.leakage.duplicates import find_near_duplicates
 
     texts: str | Sequence[str]
     if isinstance(corpus, str | Sequence):
         texts = corpus
-    else:  # a Target: audit its system prompt if it exposes one
+    else:
         system = getattr(corpus, "system", None)
         if not isinstance(system, str) or not system:
             raise ValueError(
@@ -239,34 +182,6 @@ def llm_eval(
     store: "RunStore | str | None" = None,
     max_concurrency: int = 8,
 ) -> Callable[[Callable[..., R]], Callable[..., R]]:
-    """Decorate a test to receive a completed :class:`Run` as ``run``.
-
-    The eval executes against ``target`` when the test runs (once per
-    decorated test), is optionally persisted to a store, and is passed to
-    the test as the ``run`` keyword argument::
-
-        @llm_eval(support_qa, target=Ollama("llama3.2"), seed=7)
-        def test_quality(run: Run) -> None:
-            assert run.n_errors == 0
-
-    Under pytest the decorated test is also marked ``llm_eval``, so real
-    model calls can be deselected with ``-m "not llm_eval"``.
-
-    Parameters
-    ----------
-    ev
-        The eval to run.
-    target
-        The system under evaluation.
-    seed
-        Run seed (deterministic hash guarantee applies).
-    store
-        A :class:`~holdout.store.RunStore` or a path to one; when given,
-        the run is saved before the test body executes.
-    max_concurrency
-        Concurrent cases in flight.
-    """
-
     def decorate(fn: Callable[..., R]) -> Callable[..., R]:
         @functools.wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> R:
@@ -277,8 +192,6 @@ def llm_eval(
                 (store if isinstance(store, RunStore) else RunStore(store)).save(result)
             return fn(*args, run=result, **kwargs)
 
-        # Hide the injected ``run`` parameter from pytest's fixture
-        # resolution: the wrapper's visible signature must not request it.
         sig = inspect.signature(fn)
         params = [p for name, p in sig.parameters.items() if name != "run"]
         wrapper.__signature__ = sig.replace(parameters=params)  # type: ignore[attr-defined]

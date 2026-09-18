@@ -1,5 +1,3 @@
-"""Rich terminal rendering for runs and comparisons — intervals always."""
-
 from rich.console import Console
 from rich.table import Table
 
@@ -22,7 +20,6 @@ _VERDICT_TEXT = {
 
 
 def print_run(console: Console, run: Run, *, level: float = 0.95) -> None:
-    """Print a run's metrics table, every estimate with its interval."""
     table = Table(
         title=f"{run.eval_name} · {run.target_name} · run {run.short_run_id}",
         title_justify="left",
@@ -50,7 +47,6 @@ def print_run(console: Console, run: Run, *, level: float = 0.95) -> None:
 
 
 def print_comparison(console: Console, cmp: RunComparison) -> None:
-    """Print a comparison table plus verdict line and warnings."""
     table = Table(
         title=(
             f"{cmp.eval_name}: {cmp.baseline_target} ({cmp.baseline_run_id[:12]}) vs "
@@ -91,7 +87,6 @@ def print_comparison(console: Console, cmp: RunComparison) -> None:
 
 
 def comparison_markdown(cmp: RunComparison) -> str:
-    """Render a comparison as GitHub-flavored markdown (for PR comments)."""
     head = f"### holdout · `{cmp.eval_name}` — **{_VERDICT_TEXT[cmp.verdict]}**"
     meta = (
         f"baseline `{cmp.baseline_run_id[:12]}` ({cmp.baseline_target}) vs "
@@ -127,7 +122,6 @@ def comparison_markdown(cmp: RunComparison) -> str:
 
 
 def print_run_list(console: Console, infos: list[StoredRunInfo]) -> None:
-    """Print the stored-runs listing."""
     table = Table(title="stored runs", title_justify="left")
     table.add_column("run")
     table.add_column("eval")

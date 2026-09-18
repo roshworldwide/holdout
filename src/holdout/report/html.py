@@ -1,11 +1,3 @@
-"""Self-contained HTML reports — every metric drawn with its error bar.
-
-One file, no external assets, openable anywhere (including air-gapped
-machines) and safe to attach to a PR or email. The visual language is the
-holdout brand: Vault black canvas, Starlight Gold accents, Snow text, and
-confidence intervals rendered as literal error bars.
-"""
-
 import html as _html
 from collections.abc import Iterable, Sequence
 
@@ -64,7 +56,6 @@ def _esc(text: str) -> str:
 
 
 def _domain(estimates: Iterable[Estimate]) -> tuple[float, float]:
-    """Compute a padded axis domain covering every interval (10% margins)."""
     lows, highs = [], []
     for e in estimates:
         lows.append(e.ci_low)
@@ -77,7 +68,6 @@ def _domain(estimates: Iterable[Estimate]) -> tuple[float, float]:
 def _error_bar(
     est: Estimate, domain: tuple[float, float], *, color: str = GOLD, width: int = 420
 ) -> str:
-    """Render one estimate as an SVG error bar within ``domain``."""
     d0, d1 = domain
     span = (d1 - d0) or 1.0
 
@@ -113,15 +103,6 @@ def _page(title: str, body: str) -> str:
 
 
 def render_run_report(run: Run, *, level: float = 0.95) -> str:
-    """Render a single run as a self-contained HTML page.
-
-    Parameters
-    ----------
-    run
-        The run to render.
-    level
-        Confidence level for the intervals.
-    """
     metrics = run.metrics(level=level)
     rows = []
     for name, est in metrics.items():
@@ -180,13 +161,6 @@ def _comparison_row(c: MetricComparison) -> str:
 
 
 def render_comparison_report(cmp: RunComparison) -> str:
-    """Render a two-run comparison as a self-contained HTML page.
-
-    Parameters
-    ----------
-    cmp
-        The comparison produced by :func:`holdout.regression.compare`.
-    """
     rows = [_comparison_row(c) for c in cmp.comparisons]
     warnings: Sequence[str] = cmp.warnings
     warn_html = "".join(f'<p class="warn">⚠ {_esc(w)}</p>' for w in warnings)

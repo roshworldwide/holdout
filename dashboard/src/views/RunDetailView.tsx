@@ -1,5 +1,3 @@
-/** Run detail: metric estimates with error bars + the per-case results table. */
-
 import { motion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import { useApi, type RunDetail, type Score } from "../api";

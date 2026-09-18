@@ -1,5 +1,3 @@
-/** Typed client for the read-only holdout dashboard API. */
-
 import { useEffect, useState } from "react";
 
 export interface Estimate {
@@ -111,7 +109,6 @@ export interface ApiState<T> {
   loading: boolean;
 }
 
-/** Fetch a JSON API path; `null` path means "don't fetch yet". */
 export function useApi<T>(path: string | null): ApiState<T> {
   const [state, setState] = useState<ApiState<T>>({
     data: null,

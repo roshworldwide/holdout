@@ -1,5 +1,3 @@
-/** Shared store data: runs listing, ledger, and meta, fetched once. */
-
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import {
   useApi,
@@ -54,7 +52,6 @@ export function useStore(): StoreData {
   return useContext(Ctx);
 }
 
-/** Resolve a run by id or id prefix. */
 export function findRun(
   runs: RunSummary[],
   ref: string | null,

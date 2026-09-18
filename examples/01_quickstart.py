@@ -1,12 +1,3 @@
-"""Quickstart: define an eval, run it, read estimates with intervals.
-
-Fully offline — the target is an in-memory lookup, so this runs anywhere
-and demonstrates the API without credentials. Swap StaticTarget for
-Ollama/Anthropic/OpenAI/MLX when you are ready.
-
-Run: python examples/01_quickstart.py
-"""
-
 from holdout import Case, Eval, run
 from holdout.providers import StaticTarget
 from holdout.scorers import ExactMatch
@@ -24,16 +15,15 @@ cases = [
 
 qa = Eval("general-qa", cases, [ExactMatch()])
 
-# A pretend model that gets two answers wrong.
 model = StaticTarget(
     {
         "What is the capital of France?": "Paris",
         "What is 12 * 12?": "144",
         "Boiling point of water at sea level, in Celsius?": "100",
-        "Chemical symbol for gold?": "Ag",  # wrong
+        "Chemical symbol for gold?": "Ag",
         "How many continents are there?": "7",
         "What year did the Berlin Wall fall?": "1989",
-        "Largest planet in the solar system?": "Saturn",  # wrong
+        "Largest planet in the solar system?": "Saturn",
         "Square root of 256?": "16",
     },
     name="demo-model",
@@ -41,5 +31,3 @@ model = StaticTarget(
 
 result = run(qa, target=model, seed=7)
 print(result.summary())
-# Every metric ships with its confidence interval. There is no API that
-# hands you 0.75 without telling you it could plausibly be 0.41.

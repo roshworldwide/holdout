@@ -1,10 +1,8 @@
-/** Thin gold progress arc: recorded uses vs budget. */
-
 import { motion, useReducedMotion } from "framer-motion";
 
 interface ProgressArcProps {
-  fraction: number; // 0..1
-  label: string; // center text
+  fraction: number;
+  label: string;
   size?: number;
 }
 

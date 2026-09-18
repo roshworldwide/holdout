@@ -59,7 +59,7 @@ dev = [
     "pytest-cov>=6.0",
     "pytest-asyncio>=0.24",
     "hypothesis>=6.115",
-    "scipy>=1.14",          # dev-only: cross-validate our stats against reference implementations
+    "scipy>=1.14",
     "scipy-stubs>=1.14",
     "pre-commit>=4.0",
 ]
@@ -77,32 +77,21 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = [
-    "E", "F", "W",    # pycodestyle / pyflakes
-    "I",              # isort
-    "N",              # pep8-naming
-    "UP",             # pyupgrade
-    "B",              # bugbear
-    "A",              # builtins shadowing
-    "C4",             # comprehensions
-    "SIM",            # simplify
-    "ARG",            # unused arguments
-    "PTH",            # pathlib
-    "RUF",            # ruff-specific
-    "D",              # docstrings — every public function documents itself
+    "E", "F", "W",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "A",
+    "C4",
+    "SIM",
+    "ARG",
+    "PTH",
+    "RUF",
 ]
-ignore = [
-    "D105",           # magic-method docstrings
-    "D107",           # __init__ docstrings (documented at class level)
-]
-
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["D", "ARG", "E501"]
-# Examples and benchmarks are narrative scripts; comments carry the story.
-"examples/**" = ["D101", "D102", "D103"]
-"benchmarks/**" = ["D101", "D102", "D103"]
+"tests/**" = ["ARG", "E501"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -111,8 +100,6 @@ warn_unreachable = true
 show_error_codes = true
 files = ["src", "tests"]
 
-# Optional-extra SDKs: not installed in the default dev environment, imported
-# lazily at runtime. When they are absent mypy treats them as Any.
 [[tool.mypy.overrides]]
 module = ["mlx", "mlx.*", "mlx_lm", "mlx_lm.*", "openai", "openai.*", "anthropic", "anthropic.*"]
 ignore_missing_imports = true

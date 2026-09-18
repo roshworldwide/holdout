@@ -1,10 +1,3 @@
-"""Apple MLX provider — fully local inference on Apple silicon.
-
-Zero bytes leave the machine: the model runs in-process via ``mlx-lm``.
-Install with ``pip install 'holdout[mlx]'`` (Apple silicon only) and point
-at any MLX-community model (e.g. ``mlx-community/Llama-3.2-3B-Instruct-4bit``).
-"""
-
 import asyncio
 from typing import Any
 
@@ -14,21 +7,6 @@ from holdout.providers.base import ModelProvider
 
 
 class MLX(ModelProvider):
-    """Evaluate against a local MLX model (air-gapped, in-process).
-
-    The model loads lazily on the first generation and stays resident.
-    MLX seeds its sampler from ``seed`` for reproducibility; at the default
-    temperature 0.0 decoding is greedy and deterministic regardless.
-
-    Parameters
-    ----------
-    model
-        MLX model path or Hugging Face repo id (cached locally after the
-        first load; fully offline thereafter).
-
-    Other parameters are inherited from :class:`ModelProvider`.
-    """
-
     provider_id = "mlx"
 
     def __init__(
@@ -59,7 +37,6 @@ class MLX(ModelProvider):
         self._load_lock = asyncio.Lock()
 
     async def _ensure_loaded(self) -> tuple[Any, Any]:
-        """Load the model once, guarded against concurrent first calls."""
         async with self._load_lock:
             if self._loaded is None:
                 from mlx_lm import load
@@ -69,7 +46,6 @@ class MLX(ModelProvider):
             return self._loaded
 
     def _generate_sync(self, model: Any, tokenizer: Any, prompt: str, seed: int | None) -> str:
-        """Run one greedy/sampled generation on the calling thread."""
         import mlx.core as mx
         from mlx_lm import generate
         from mlx_lm.sample_utils import make_sampler
@@ -99,7 +75,6 @@ class MLX(ModelProvider):
         return str(text)
 
     async def _generate_once(self, prompt: str, *, seed: int | None) -> Completion:
-        """Generate off the event loop (MLX generation is synchronous)."""
         model, tokenizer = await self._ensure_loaded()
         text = await asyncio.to_thread(self._generate_sync, model, tokenizer, prompt, seed)
         return Completion(text=text, model=self.model)

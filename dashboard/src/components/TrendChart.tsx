@@ -1,5 +1,3 @@
-/** Metric-over-time trend: shaded CI band, thin gold line, glass tooltip. */
-
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import type { RunSummary } from "../api";
@@ -7,7 +5,7 @@ import { fmtCI, fmtDate, fmtDateShort, fmtPct, niceStep, ticksIn } from "../form
 import { useMeasure } from "../hooks";
 
 interface TrendChartProps {
-  runs: RunSummary[]; // ascending by created_at
+  runs: RunSummary[];
   metric: string;
   onPick?: (run: RunSummary) => void;
 }
@@ -102,7 +100,6 @@ export function TrendChart({ runs, metric, onPick }: TrendChartProps) {
           style={{ display: "block", cursor: onPick ? "pointer" : "default" }}
           aria-label={`${metric} over time`}
         >
-          {/* muted grid + y labels */}
           {geom.yTicks.map((t) => (
             <g key={t}>
               <line
@@ -126,7 +123,6 @@ export function TrendChart({ runs, metric, onPick }: TrendChartProps) {
             </g>
           ))}
 
-          {/* x labels */}
           {pts.map((p, i) => (
             <text
               key={p.run.run_id}
@@ -142,7 +138,6 @@ export function TrendChart({ runs, metric, onPick }: TrendChartProps) {
             </text>
           ))}
 
-          {/* CI band with faint glassy edges */}
           <motion.path
             d={band}
             fill="var(--gold-data)"
@@ -165,7 +160,6 @@ export function TrendChart({ runs, metric, onPick }: TrendChartProps) {
             />
           ))}
 
-          {/* crosshair */}
           {h && (
             <line
               x1={geom.x(h.t)}
@@ -177,7 +171,6 @@ export function TrendChart({ runs, metric, onPick }: TrendChartProps) {
             />
           )}
 
-          {/* gold line */}
           <motion.path
             d={line}
             fill="none"
@@ -190,7 +183,6 @@ export function TrendChart({ runs, metric, onPick }: TrendChartProps) {
             transition={{ type: "spring", duration: 1.3, bounce: 0 }}
           />
 
-          {/* hover CI whisker */}
           {h && (
             <g stroke="var(--gold-data)" strokeWidth={1.5} strokeLinecap="round" opacity={0.6}>
               <line
@@ -204,7 +196,6 @@ export function TrendChart({ runs, metric, onPick }: TrendChartProps) {
             </g>
           )}
 
-          {/* points */}
           {pts.map((p, i) => (
             <motion.circle
               key={p.run.run_id}
@@ -228,7 +219,6 @@ export function TrendChart({ runs, metric, onPick }: TrendChartProps) {
         </svg>
       )}
 
-      {/* glass tooltip */}
       <AnimatePresence>
         {h && geom && (
           <motion.div

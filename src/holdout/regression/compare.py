@@ -1,16 +1,3 @@
-"""The regression engine: two Runs in, an honest verdict out.
-
-Answers exactly one question correctly: *did quality change, or is this
-noise?* For every metric shared by two runs it aligns the per-case scores
-by case id, picks the right paired test for the score kind (exact McNemar
-for binary, paired bootstrap for continuous), corrects the p-values for
-multiple comparisons, and only then issues a verdict. A metric that cannot
-be tested is reported as ``insufficient_data`` — never silently passed.
-
-Sign convention: effects are ``candidate - baseline``; positive means the
-candidate scored higher.
-"""
-
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
@@ -36,29 +23,6 @@ _DISPLAY = {
 
 @dataclass(frozen=True, slots=True)
 class MetricComparison:
-    """The comparison outcome for one metric.
-
-    Parameters
-    ----------
-    metric
-        The scorer/metric name.
-    verdict
-        ``improved`` / ``regressed`` (significant at the corrected alpha),
-        ``no_significant_change``, or ``insufficient_data``.
-    n_pairs
-        Number of paired cases the test used.
-    result
-        The underlying test result (None when untestable).
-    p_adjusted
-        The p-value the verdict was judged on: corrected when a correction
-        is applied, equal to ``result.p_value`` under ``correction="none"``,
-        and ``None`` only when the metric was untestable.
-    baseline, candidate
-        Each run's estimate over the *aligned* cases, with CI.
-    note
-        Why the metric was untestable, when it was.
-    """
-
     metric: str
     verdict: Verdict
     n_pairs: int
@@ -69,7 +33,6 @@ class MetricComparison:
     note: str | None = None
 
     def to_dict(self) -> dict[str, object]:
-        """Return a JSON-serializable representation."""
         return {
             "metric": self.metric,
             "verdict": self.verdict,
@@ -84,27 +47,6 @@ class MetricComparison:
 
 @dataclass(frozen=True, slots=True)
 class RunComparison:
-    """The full comparison between a baseline run and a candidate run.
-
-    Parameters
-    ----------
-    eval_name
-        Name of the eval (the baseline's).
-    baseline_run_id, candidate_run_id
-        Full run ids of the two runs.
-    baseline_target, candidate_target
-        Target names of the two runs.
-    alpha
-        Significance level applied to *corrected* p-values.
-    correction
-        The multiple-comparison correction applied.
-    comparisons
-        One entry per shared metric.
-    warnings
-        Honesty notes: fingerprint mismatches, dropped unpaired cases,
-        metrics missing from one side. Never empty silently — read them.
-    """
-
     eval_name: str
     baseline_run_id: str
     candidate_run_id: str
@@ -117,13 +59,6 @@ class RunComparison:
 
     @property
     def verdict(self) -> Verdict:
-        """Overall verdict: worst news wins.
-
-        Any regressed metric makes the run ``regressed``; otherwise any
-        improved metric makes it ``improved``; otherwise
-        ``no_significant_change`` if at least one metric was actually
-        tested, else ``insufficient_data``.
-        """
         verdicts = {c.verdict for c in self.comparisons}
         if "regressed" in verdicts:
             return "regressed"
@@ -135,16 +70,13 @@ class RunComparison:
 
     @property
     def regressed(self) -> tuple[MetricComparison, ...]:
-        """The metrics that significantly regressed."""
         return tuple(c for c in self.comparisons if c.verdict == "regressed")
 
     @property
     def improved(self) -> tuple[MetricComparison, ...]:
-        """The metrics that significantly improved."""
         return tuple(c for c in self.comparisons if c.verdict == "improved")
 
     def summary(self) -> str:
-        """Render the comparison as a human-readable table."""
         head = (
             f"{self.eval_name}: {self.baseline_target} ({self.baseline_run_id[:12]}) vs "
             f"{self.candidate_target} ({self.candidate_run_id[:12]})"
@@ -173,7 +105,6 @@ class RunComparison:
         return "\n".join(lines)
 
     def to_dict(self) -> dict[str, object]:
-        """Return a JSON-serializable representation."""
         return {
             "eval_name": self.eval_name,
             "baseline_run_id": self.baseline_run_id,
@@ -191,7 +122,6 @@ class RunComparison:
 def _aligned_scores(
     baseline: Run, candidate: Run, metric: str
 ) -> tuple[list[str], list[float], list[float], int, int]:
-    """Align per-case scores by case id; return (ids, a, b, dropped_a, dropped_b)."""
     a_scores = baseline.case_scores(metric)
     b_scores = candidate.case_scores(metric)
     ids = sorted(set(a_scores) & set(b_scores))
@@ -215,45 +145,6 @@ def compare(
     n_resamples: int = 10_000,
     seed: int = 0,
 ) -> RunComparison:
-    """Compare two runs metric by metric and issue a statistical verdict.
-
-    For each metric present in both runs, scores are paired by case id and
-    tested with the appropriate paired test: exact McNemar when both sides
-    are binary, paired bootstrap otherwise (or the test you force via
-    ``test``). P-values are corrected across metrics (Benjamini-Hochberg by
-    default) and a verdict is issued only on the corrected values.
-
-    Everything questionable is surfaced in ``warnings``: eval fingerprint
-    mismatches, unpaired cases dropped because of errors, metrics absent
-    from one side. The comparison never silently narrows its claim.
-
-    Parameters
-    ----------
-    baseline
-        The reference run (e.g. main branch, prompt v1).
-    candidate
-        The challenger run (e.g. PR branch, prompt v2). Effects are
-        ``candidate - baseline``.
-    alpha
-        Significance level applied to corrected p-values. Default 0.05.
-    correction
-        ``"benjamini-hochberg"`` (FDR, default), ``"holm"`` (FWER), or
-        ``"none"``.
-    test
-        ``"auto"`` (McNemar for binary, paired bootstrap otherwise) or an
-        explicit test name.
-    level
-        Confidence level for effect CIs.
-    n_resamples
-        Bootstrap/permutation resamples.
-    seed
-        Seed for all resampling; same runs + seed => identical comparison.
-
-    Raises
-    ------
-    ValueError
-        If the runs share no metrics.
-    """
     if not 0.0 < alpha < 1.0:
         raise ValueError(f"alpha must be in (0, 1), got {alpha}")
 
@@ -334,7 +225,6 @@ def compare(
                 candidate=bootstrap_ci(b, level=level, n_resamples=n_resamples, seed=seed),
             )
         )
-    # Keep the original metric order: tested and untestable interleaved.
     ordered = [
         next(c for c in comparisons if c.metric == m) if m not in untestable else untestable[m]
         for m in shared

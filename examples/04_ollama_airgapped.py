@@ -1,12 +1,3 @@
-"""Air-gapped evaluation with Ollama: zero bytes leave the machine.
-
-Prereqs:
-    ollama pull llama3.2          # once, while online
-    ollama serve                  # then unplug the network if you like
-
-Run: python examples/04_ollama_airgapped.py
-"""
-
 import sys
 
 import httpx
@@ -32,7 +23,7 @@ target = Ollama(
 
 try:
     result = run(ev, target=target, seed=42)
-except Exception as exc:  # no server running — explain instead of stack-tracing
+except Exception as exc:
     if isinstance(exc.__cause__, httpx.TransportError) or "ollama" in str(exc).lower():
         sys.exit("Ollama is not reachable on localhost:11434 — run 'ollama serve' first.")
     raise

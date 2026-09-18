@@ -1,10 +1,3 @@
-"""Model providers behind one Target protocol.
-
-Providers are lazily imported so users only need the SDKs they actually
-use: ``from holdout.providers import Anthropic`` never imports the OpenAI
-SDK, and Ollama/StaticTarget need no SDK at all.
-"""
-
 import importlib
 from typing import TYPE_CHECKING
 
@@ -41,7 +34,6 @@ _REGISTRY = {
 
 
 def __getattr__(name: str) -> object:
-    """Lazily import provider classes on first attribute access."""
     try:
         module_name = _REGISTRY[name]
     except KeyError:
@@ -50,5 +42,4 @@ def __getattr__(name: str) -> object:
 
 
 def __dir__() -> list[str]:
-    """Expose lazy attributes to introspection."""
     return sorted(__all__)

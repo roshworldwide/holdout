@@ -1,32 +1,8 @@
-"""The Estimate type: point estimates that never travel without uncertainty.
-
-holdout's cultural rule is that no metric is ever reported as a naked number.
-``Estimate`` is the type that enforces it — every aggregate in the public API
-(run summaries, comparisons, reports) is an ``Estimate``, and its string form
-always renders the confidence interval.
-"""
-
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
 class Estimate:
-    """A point estimate with its confidence interval.
-
-    Parameters
-    ----------
-    value
-        The point estimate (e.g. a mean score).
-    ci_low, ci_high
-        Lower and upper bounds of the confidence interval.
-    n
-        Number of observations the estimate is computed from.
-    level
-        Confidence level of the interval (default 0.95).
-    method
-        The method that produced the interval (e.g. ``"bootstrap-bca"``).
-    """
-
     value: float
     ci_low: float
     ci_high: float
@@ -44,7 +20,6 @@ class Estimate:
 
     @property
     def width(self) -> float:
-        """Width of the confidence interval."""
         return self.ci_high - self.ci_low
 
     def __str__(self) -> str:
@@ -55,7 +30,6 @@ class Estimate:
         )
 
     def to_dict(self) -> dict[str, float | int | str]:
-        """Return a JSON-serializable representation."""
         return {
             "value": self.value,
             "ci_low": self.ci_low,

@@ -1,5 +1,3 @@
-/** Compare: baseline vs candidate with paired error bars — the signature view. */
-
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -20,7 +18,6 @@ import { fmtEffect, fmtP } from "../format";
 import { usePageTitle } from "../title";
 import type { Verdict } from "../api";
 
-/** A faint verdict-colored bloom behind the banner's left edge. */
 const BLOOM: Record<Verdict, string> = {
   regressed:
     "radial-gradient(420px circle at 8% 50%, rgba(229,72,77,0.16), transparent 70%)",
@@ -124,7 +121,6 @@ export function Compare() {
   const baselineRun = findRun(runs, baselineParam);
   const candidateRun = findRun(runs, candidateParam);
 
-  // Eval scope: explicit param, else inferred from the chosen baseline.
   const evalName =
     baselineRun?.eval_name ?? params.get("eval") ?? evalNames[0] ?? "";
   const evalRuns = useMemo(
@@ -132,7 +128,6 @@ export function Compare() {
     [runs, evalName],
   );
 
-  // Defaults: candidate = newest run, baseline = the one before it.
   const baseline =
     baselineRun && baselineRun.eval_name === evalName ? baselineRun : evalRuns[1];
   const candidate =

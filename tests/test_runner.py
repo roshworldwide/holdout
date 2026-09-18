@@ -1,9 +1,3 @@
-"""End-to-end tests for the runner (run/arun) and the Run record.
-
-All tests are offline: they use StaticTarget / small local Target and Scorer
-implementations, never the network.
-"""
-
 import asyncio
 import json
 from dataclasses import replace
@@ -20,7 +14,6 @@ from holdout.providers.static import StaticTarget
 from holdout.scorers.exact import ExactMatch
 from holdout.stats.estimate import Estimate
 
-# Question -> correct answer for the reference eval.
 QA: dict[str, str] = {
     "capital of France?": "Paris",
     "2+2?": "4",
@@ -28,8 +21,6 @@ QA: dict[str, str] = {
     "opposite of hot?": "cold",
 }
 
-# A target that gets exactly one answer wrong, so exact_match is 0.75 and the
-# bootstrap interval is non-degenerate.
 RESPONSES: dict[str, str] = {**QA, "2+2?": "5"}
 
 
@@ -43,8 +34,6 @@ def make_target(responses: dict[str, str] | None = None) -> StaticTarget:
 
 
 class ExplodingScorer(Scorer):
-    """A scorer that always raises, to exercise per-scorer error recording."""
-
     @property
     def name(self) -> str:
         return "exploding"
@@ -54,8 +43,6 @@ class ExplodingScorer(Scorer):
 
 
 class CountingTarget:
-    """Implements the Target protocol while tracking max in-flight generate calls."""
-
     def __init__(self, delay_s: float = 0.02) -> None:
         self._delay_s = delay_s
         self._in_flight = 0
@@ -80,9 +67,6 @@ class CountingTarget:
             async with self._lock:
                 self._in_flight -= 1
         return Completion(text=prompt)
-
-
-# --- shape of a run -------------------------------------------------------
 
 
 def test_results_align_one_to_one_with_cases() -> None:
@@ -115,9 +99,6 @@ def test_summary_contains_ci_and_short_run_id() -> None:
     assert r.run_id.startswith(r.short_run_id)
 
 
-# --- determinism: the flagship guarantee ----------------------------------
-
-
 def test_same_eval_target_seed_gives_identical_run_id_and_metrics() -> None:
     r1 = run(make_eval(), target=make_target(), seed=7)
     r2 = run(make_eval(), target=make_target(), seed=7)
@@ -146,9 +127,6 @@ def test_created_at_and_latency_do_not_affect_run_id() -> None:
     assert r2.run_id == r1.run_id
 
 
-# --- error handling --------------------------------------------------------
-
-
 def test_generation_failure_is_recorded_per_case_and_excluded_from_metrics() -> None:
     cases = [
         Case(input="a", reference="A", id="case-a"),
@@ -156,7 +134,7 @@ def test_generation_failure_is_recorded_per_case_and_excluded_from_metrics() -> 
         Case(input="missing", reference="M", id="case-missing"),
     ]
     ev = Eval(name="gen-errors", cases=cases, scorers=[ExactMatch()])
-    target = StaticTarget({"a": "A", "b": "wrong"})  # default=None: unknown input raises
+    target = StaticTarget({"a": "A", "b": "wrong"})
 
     r = run(ev, target=target, seed=1)
 
@@ -169,7 +147,7 @@ def test_generation_failure_is_recorded_per_case_and_excluded_from_metrics() -> 
     assert r.n_errors == 1
 
     scores = r.case_scores("exact_match")
-    assert scores == {"case-a": 1.0, "case-b": 0.0}  # failed case absent
+    assert scores == {"case-a": 1.0, "case-b": 0.0}
 
     est = r.metrics(n_resamples=200)["exact_match"]
     assert est.n == 2
@@ -195,9 +173,6 @@ def test_failing_scorer_does_not_block_other_scorers() -> None:
     assert "no data" in r.summary()
 
 
-# --- concurrency ------------------------------------------------------------
-
-
 def test_in_flight_generate_calls_never_exceed_max_concurrency() -> None:
     cases = [Case(input=f"p{i}", reference=f"p{i}") for i in range(12)]
     ev = Eval(name="concurrency", cases=cases, scorers=[ExactMatch()])
@@ -209,15 +184,12 @@ def test_in_flight_generate_calls_never_exceed_max_concurrency() -> None:
     assert len(r.results) == 12
     assert r.n_errors == 0
     assert target.max_in_flight <= 3
-    assert target.max_in_flight >= 2  # the bound was actually exercised
+    assert target.max_in_flight >= 2
 
 
 def test_max_concurrency_zero_raises_value_error() -> None:
     with pytest.raises(ValueError, match="max_concurrency"):
         run(make_eval(), target=make_target(), max_concurrency=0)
-
-
-# --- event-loop discipline ---------------------------------------------------
 
 
 async def test_run_inside_event_loop_raises_runtime_error() -> None:
@@ -231,9 +203,6 @@ async def test_arun_works_inside_event_loop() -> None:
     assert r.n_errors == 0
 
 
-# --- serialization and accessors ---------------------------------------------
-
-
 def test_to_dict_from_dict_round_trip_preserves_everything() -> None:
     cases = [
         Case(input="a", reference="A", id="case-a"),
@@ -243,7 +212,7 @@ def test_to_dict_from_dict_round_trip_preserves_everything() -> None:
     ev = Eval(name="round-trip", cases=cases, scorers=[ExactMatch()])
     r = run(ev, target=StaticTarget({"a": "A", "b": "wrong"}), seed=42)
 
-    payload = json.loads(json.dumps(r.to_dict()))  # prove JSON serializability
+    payload = json.loads(json.dumps(r.to_dict()))
     restored = Run.from_dict(payload)
 
     assert restored.run_id == r.run_id

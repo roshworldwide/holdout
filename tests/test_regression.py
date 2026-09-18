@@ -1,5 +1,3 @@
-"""Tests for the regression engine (holdout.regression.compare)."""
-
 import json
 from collections.abc import Mapping
 
@@ -36,8 +34,6 @@ def run_pair(
 
 
 class NamedRegex(Scorer):
-    """Binary scorer with a configurable name (distinct metrics in one eval)."""
-
     def __init__(self, metric_name: str, needle: str) -> None:
         self._metric_name = metric_name
         self._needle = needle
@@ -54,19 +50,12 @@ class NamedRegex(Scorer):
 
 
 class LengthScore(Scorer):
-    """Continuous scorer: output length scaled into [0, 1]."""
-
     @property
     def name(self) -> str:
         return "length_score"
 
     async def score(self, case: Case, output: str) -> Score:
         return Score(value=min(len(output) / 10.0, 1.0), kind="continuous")
-
-
-# ---------------------------------------------------------------------------
-# Verdicts
-# ---------------------------------------------------------------------------
 
 
 def test_binary_regression_detected_with_mcnemar() -> None:
@@ -125,7 +114,6 @@ def test_forced_test_is_honored(forced: str, expected_prefix: str) -> None:
 def test_insufficient_data_when_one_paired_case() -> None:
     ev = make_eval(4)
     a = run(ev, target=make_target(set(), 4, "a"), seed=1)
-    # Candidate answers only q0; all other cases error (no default).
     b = run(ev, target=StaticTarget({"q0": "yes"}, name="b"), seed=1)
     cmp = compare(a, b, seed=0)
     (mc,) = cmp.comparisons
@@ -137,8 +125,6 @@ def test_insufficient_data_when_one_paired_case() -> None:
 
 
 def test_verdict_precedence_regression_beats_improvement() -> None:
-    # candidate: 15 cases switch "yes" -> "yes 1": exact_match regresses,
-    # digit-regex improves. Worst news wins.
     scorers: list[Scorer] = [ExactMatch(), NamedRegex("has_digit", "1")]
     ev = make_eval(scorers=scorers)
     a = run(ev, target=StaticTarget({f"q{i}": "yes" for i in range(N)}, name="a"), seed=1)
@@ -162,14 +148,7 @@ def test_verdict_improvement_with_no_change_elsewhere() -> None:
     assert cmp.verdict == "improved"
 
 
-# ---------------------------------------------------------------------------
-# Multiple-comparison correction
-# ---------------------------------------------------------------------------
-
-
 def _three_metric_runs() -> tuple[Run, Run]:
-    # has_a improves on 6 cases (McNemar exact p = 2/64 = 0.03125 < 0.05);
-    # the other two metrics never change (p = 1).
     scorers: list[Scorer] = [
         NamedRegex("has_a", "A"),
         NamedRegex("has_b", "B"),
@@ -189,9 +168,8 @@ def test_bh_correction_can_flip_borderline_significance() -> None:
 
     raw = {c.metric: c for c in uncorrected.comparisons}
     adj = {c.metric: c for c in corrected.comparisons}
-    assert raw["has_a"].verdict == "improved"  # raw p = 0.03125 <= 0.05
+    assert raw["has_a"].verdict == "improved"
     assert raw["has_a"].p_adjusted == pytest.approx(0.03125)
-    # BH over {0.03125, 1, 1}: q = 0.09375 > 0.05 — the fluke is absorbed.
     assert adj["has_a"].p_adjusted == pytest.approx(0.09375)
     assert adj["has_a"].verdict == "no_significant_change"
     assert corrected.verdict == "no_significant_change"
@@ -199,19 +177,14 @@ def test_bh_correction_can_flip_borderline_significance() -> None:
     for metric in ("has_a", "has_b", "has_c"):
         r, c = raw[metric], adj[metric]
         assert r.result is not None and c.p_adjusted is not None
-        assert c.p_adjusted >= r.result.p_value  # correction never lowers p
+        assert c.p_adjusted >= r.result.p_value
 
 
 def test_holm_correction_runs() -> None:
     a, b = _three_metric_runs()
     cmp = compare(a, b, correction="holm", seed=0)
     adj = {c.metric: c.p_adjusted for c in cmp.comparisons}
-    assert adj["has_a"] == pytest.approx(0.09375)  # 3 * 0.03125
-
-
-# ---------------------------------------------------------------------------
-# Warnings and validation
-# ---------------------------------------------------------------------------
+    assert adj["has_a"] == pytest.approx(0.09375)
 
 
 def test_fingerprint_mismatch_warns_but_compares_shared_ids() -> None:
@@ -230,7 +203,7 @@ def test_fingerprint_mismatch_warns_but_compares_shared_ids() -> None:
 def test_errored_cases_warn_as_dropped() -> None:
     ev = make_eval(10)
     a = run(ev, target=make_target(set(), 10, "a"), seed=1)
-    incomplete = {f"q{i}": "yes" for i in range(8)}  # q8, q9 error
+    incomplete = {f"q{i}": "yes" for i in range(8)}
     b = run(ev, target=StaticTarget(incomplete, name="b"), seed=1)
     cmp = compare(a, b, seed=0)
     assert any("dropped" in w and "unpaired" in w for w in cmp.warnings)
@@ -263,11 +236,6 @@ def test_alpha_validation(alpha: float) -> None:
     a, b = run_pair(set(), set())
     with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):
         compare(a, b, alpha=alpha)
-
-
-# ---------------------------------------------------------------------------
-# Rendering, serialization, determinism
-# ---------------------------------------------------------------------------
 
 
 def test_summary_contents() -> None:

@@ -1,5 +1,3 @@
-/** Verdict pill: REGRESSED / IMPROVED / NO SIGNIFICANT CHANGE / INSUFFICIENT DATA. */
-
 import { motion } from "framer-motion";
 import type { Verdict } from "../api";
 

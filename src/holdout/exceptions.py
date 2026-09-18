@@ -1,17 +1,8 @@
-"""Exception hierarchy for holdout."""
-
-
 class HoldoutError(Exception):
-    """Base class for all holdout errors."""
+    pass
 
 
 class MissingDependencyError(HoldoutError):
-    """An optional dependency is required for the requested feature.
-
-    Raised by lazily-imported providers so users only install the SDKs
-    they actually use.
-    """
-
     def __init__(self, package: str, extra: str) -> None:
         self.package = package
         self.extra = extra
@@ -22,8 +13,6 @@ class MissingDependencyError(HoldoutError):
 
 
 class ProviderError(HoldoutError):
-    """A model provider failed after exhausting its retries."""
-
     def __init__(self, provider: str, attempts: int, cause: Exception) -> None:
         self.provider = provider
         self.attempts = attempts

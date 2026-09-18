@@ -1,5 +1,3 @@
-/** A number that springs from 0 to its value on first render. */
-
 import {
   useMotionValueEvent,
   useReducedMotion,

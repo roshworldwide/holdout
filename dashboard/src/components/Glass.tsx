@@ -1,5 +1,3 @@
-/** Glass primitives: cards with a cursor-following specular highlight. */
-
 import { motion } from "framer-motion";
 import { useRef, type ReactNode } from "react";
 

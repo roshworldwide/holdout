@@ -1,5 +1,3 @@
-"""Unit tests for the core models: hashing, Case, Eval, Score, and Scorer."""
-
 import json
 from pathlib import Path
 
@@ -13,8 +11,6 @@ from holdout.scorers.exact import ExactMatch
 
 
 class NullScorer(Scorer):
-    """Minimal scorer used to vary scorer sets without changing case data."""
-
     @property
     def name(self) -> str:
         return "null"
@@ -29,11 +25,6 @@ def make_cases() -> list[Case]:
 
 def make_eval(name: str = "smoke") -> Eval:
     return Eval(name=name, cases=make_cases(), scorers=[ExactMatch()])
-
-
-# ---------------------------------------------------------------------------
-# hashing
-# ---------------------------------------------------------------------------
 
 
 def test_canonical_json_sorts_keys_and_strips_whitespace() -> None:
@@ -60,11 +51,6 @@ def test_short_id_prefix() -> None:
     full = fingerprint({"k": "v"})
     assert short_id(full) == full[:12]
     assert short_id(full, length=8) == full[:8]
-
-
-# ---------------------------------------------------------------------------
-# Case
-# ---------------------------------------------------------------------------
 
 
 def test_case_content_id_stable_across_identical_constructions() -> None:
@@ -99,11 +85,6 @@ def test_case_to_dict_defaults() -> None:
         "reference": None,
         "metadata": {},
     }
-
-
-# ---------------------------------------------------------------------------
-# Eval construction and validation
-# ---------------------------------------------------------------------------
 
 
 def test_eval_auto_assigns_content_ids() -> None:
@@ -169,11 +150,6 @@ def test_eval_requires_reference_message_names_scorer() -> None:
     assert "requires a reference" in message
 
 
-# ---------------------------------------------------------------------------
-# Eval fingerprint
-# ---------------------------------------------------------------------------
-
-
 def test_eval_fingerprint_stable_across_constructions() -> None:
     assert make_eval().fingerprint == make_eval().fingerprint
 
@@ -196,11 +172,6 @@ def test_eval_len_and_repr() -> None:
     ev = make_eval(name="smoke")
     assert len(ev) == 2
     assert repr(ev) == "Eval(name='smoke', cases=2, scorers=['exact_match'])"
-
-
-# ---------------------------------------------------------------------------
-# Eval.from_jsonl
-# ---------------------------------------------------------------------------
 
 
 def test_from_jsonl_happy_path(tmp_path: Path) -> None:
@@ -263,11 +234,6 @@ def test_from_jsonl_explicit_name_wins(tmp_path: Path) -> None:
     assert ev.name == "custom"
 
 
-# ---------------------------------------------------------------------------
-# Score
-# ---------------------------------------------------------------------------
-
-
 def test_binary_score_accepts_zero_and_one() -> None:
     assert Score(value=1.0, kind="binary").value == 1.0
     assert Score(value=0.0, kind="binary").value == 0.0
@@ -290,11 +256,6 @@ def test_score_to_dict() -> None:
         "kind": "binary",
         "detail": None,
     }
-
-
-# ---------------------------------------------------------------------------
-# Scorer
-# ---------------------------------------------------------------------------
 
 
 def test_scorer_fingerprint_sensitive_to_config() -> None:

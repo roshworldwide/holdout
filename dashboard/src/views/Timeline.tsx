@@ -1,5 +1,3 @@
-/** Timeline (home): trend chart + glass run cards for the selected eval. */
-
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -110,7 +108,6 @@ export function Timeline() {
     return names;
   }, [evalRuns]);
 
-  // Shared per-metric axis domain so error bars are comparable across cards.
   const domains = useMemo(() => {
     const out: Record<string, [number, number]> = {};
     for (const m of metricNames) {

@@ -1,5 +1,3 @@
-"""Tests for holdout.stats.paired (paired significance tests) and holdout.stats.result."""
-
 from collections.abc import Callable
 from itertools import product
 
@@ -15,8 +13,6 @@ from holdout.stats.paired import (
     paired_diffs,
     permutation_test,
 )
-
-# Aliased so pytest does not try to collect the class as a test suite.
 from holdout.stats.result import TestResult as Result
 
 PairedTest = Callable[..., Result]
@@ -31,7 +27,6 @@ def _estimate(value: float = 0.5, lo: float = 0.4, hi: float = 0.6, n: int = 10)
 
 
 def _brute_force_signflip_p(d: NDArray[np.float64]) -> float:
-    """Independent exact sign-flip p-value: enumerate all 2^n assignments."""
     obs = float(d.mean())
     tol = 1e-12 * max(1.0, abs(obs))
     n = int(d.size)
@@ -52,11 +47,6 @@ def _shifted_pair(
     return _floats(a), _floats(b)
 
 
-# ---------------------------------------------------------------------------
-# TestResult
-# ---------------------------------------------------------------------------
-
-
 def test_result_str_renders_signed_effect_ci_p_test_and_n() -> None:
     res = Result(
         test="paired-bootstrap",
@@ -67,7 +57,7 @@ def test_result_str_renders_signed_effect_ci_p_test_and_n() -> None:
     )
     rendered = str(res)
     assert rendered == "Δ=+0.500 [95% CI +0.412, +0.588], p=0.0123 (paired-bootstrap, n=24)"
-    assert "+0.500" in rendered  # effect carries an explicit sign
+    assert "+0.500" in rendered
     assert "[95% CI" in rendered
     assert "p=0.0123" in rendered
     assert "paired-bootstrap" in rendered
@@ -117,11 +107,6 @@ def test_result_to_dict_round_content() -> None:
     }
 
 
-# ---------------------------------------------------------------------------
-# paired_diffs
-# ---------------------------------------------------------------------------
-
-
 def test_paired_diffs_returns_b_minus_a() -> None:
     d = paired_diffs([1.0, 2.0, 3.0], [1.5, 1.0, 4.0])
     assert d.tolist() == pytest.approx([0.5, -1.0, 1.0])
@@ -156,15 +141,10 @@ def test_paired_diffs_two_dimensional_raises() -> None:
         paired_diffs(square, flat)  # type: ignore[arg-type]
 
 
-# ---------------------------------------------------------------------------
-# paired_bootstrap_test
-# ---------------------------------------------------------------------------
-
-
 def test_bootstrap_null_case_p_well_above_alpha() -> None:
     rng = np.random.default_rng(42)
     a = rng.normal(0.5, 0.1, size=40)
-    b = a + rng.normal(0.0, 0.05, size=40)  # small symmetric noise, no real shift
+    b = a + rng.normal(0.0, 0.05, size=40)
     res = paired_bootstrap_test(_floats(a), _floats(b), n_resamples=1_000, seed=7)
     assert res.p_value > 0.5
     assert res.effect == pytest.approx(0.0, abs=0.05)
@@ -173,8 +153,8 @@ def test_bootstrap_null_case_p_well_above_alpha() -> None:
 def test_bootstrap_strong_shift_is_detected() -> None:
     a, b = _shifted_pair(n=60, shift=0.5, noise=0.01, seed=3)
     res = paired_bootstrap_test(a, b, n_resamples=2_000, seed=0)
-    assert res.p_value <= 0.0011  # at the 1/(B+1) floor for this effect size
-    assert res.ci.ci_low > 0.0  # CI excludes zero
+    assert res.p_value <= 0.0011
+    assert res.ci.ci_low > 0.0
     assert res.effect == pytest.approx(0.5, abs=0.05)
     assert res.test == "paired-bootstrap"
 
@@ -185,12 +165,12 @@ def test_bootstrap_sign_convention_swapping_a_and_b_flips_effect() -> None:
     backward = paired_bootstrap_test(b, a, n_resamples=500, seed=0)
     assert forward.effect > 0.0
     assert backward.effect == pytest.approx(-forward.effect, rel=1e-12)
-    assert backward.p_value == forward.p_value  # two-sided: same evidence either way
+    assert backward.p_value == forward.p_value
 
 
 def test_bootstrap_p_is_never_zero_floor_is_one_over_b_plus_one() -> None:
     a = _floats(np.linspace(0.0, 1.0, 30))
-    b = [x + 10.0 for x in a]  # huge shift: no resample can be as extreme
+    b = [x + 10.0 for x in a]
     res = paired_bootstrap_test(a, b, n_resamples=999, seed=1)
     assert res.p_value == pytest.approx(1.0 / (999 + 1))
     assert res.p_value > 0.0
@@ -210,9 +190,9 @@ def test_bootstrap_different_seed_p_may_differ_slightly() -> None:
     b = a + 0.08 + rng.normal(0.0, 0.15, size=20)
     one = paired_bootstrap_test(_floats(a), _floats(b), n_resamples=400, seed=0)
     two = paired_bootstrap_test(_floats(a), _floats(b), n_resamples=400, seed=1)
-    assert one.effect == two.effect  # the observed effect is seed-independent
-    assert one.p_value != two.p_value  # the Monte-Carlo p-value is not
-    assert abs(one.p_value - two.p_value) < 0.05  # ... but only slightly
+    assert one.effect == two.effect
+    assert one.p_value != two.p_value
+    assert abs(one.p_value - two.p_value) < 0.05
 
 
 def test_bootstrap_n_is_pair_count_and_detail_says_two_sided() -> None:
@@ -221,11 +201,6 @@ def test_bootstrap_n_is_pair_count_and_detail_says_two_sided() -> None:
     assert res.n == 37
     assert res.detail is not None
     assert "two-sided" in res.detail
-
-
-# ---------------------------------------------------------------------------
-# mcnemar_test
-# ---------------------------------------------------------------------------
 
 
 def _discordant_binary(
@@ -237,9 +212,8 @@ def _discordant_binary(
 
 
 def test_mcnemar_hand_computed_exact_p_8_improvements_2_regressions() -> None:
-    a, b = _discordant_binary(n01=8, n10=2, both0=20, both1=20)  # n = 50
+    a, b = _discordant_binary(n01=8, n10=2, both0=20, both1=20)
     res = mcnemar_test(a, b, n_resamples=500, seed=0)
-    # Exact conditional: 2 * sum_{i=0..2} C(10, i) / 2^10 = 2 * (1 + 10 + 45) / 1024 = 7/64.
     assert res.p_value == pytest.approx(7.0 / 64.0, rel=1e-12)
     assert res.test == "mcnemar-exact"
     assert res.n == 50
@@ -251,9 +225,8 @@ def test_mcnemar_hand_computed_exact_p_8_improvements_2_regressions() -> None:
 
 
 def test_mcnemar_hand_computed_exact_p_1_improvement_9_regressions() -> None:
-    a, b = _discordant_binary(n01=1, n10=9, both0=10, both1=10)  # n = 30
+    a, b = _discordant_binary(n01=1, n10=9, both0=10, both1=10)
     res = mcnemar_test(a, b, n_resamples=500, seed=0)
-    # 2 * sum_{i=0..1} C(10, i) / 2^10 = 2 * (1 + 10) / 1024 = 11/512.
     assert res.p_value == pytest.approx(11.0 / 512.0, rel=1e-12)
     assert res.effect == pytest.approx((1 - 9) / 30, rel=1e-12)
     assert res.detail is not None
@@ -264,7 +237,7 @@ def test_mcnemar_hand_computed_exact_p_1_improvement_9_regressions() -> None:
 def test_mcnemar_equal_discordant_counts_p_capped_at_one() -> None:
     a, b = _discordant_binary(n01=3, n10=3, both0=2, both1=2)
     res = mcnemar_test(a, b, n_resamples=500, seed=0)
-    assert res.p_value == 1.0  # 2 * P(X <= 3 | Binom(6, 1/2)) > 1, capped
+    assert res.p_value == 1.0
     assert res.effect == pytest.approx(0.0)
 
 
@@ -285,20 +258,16 @@ def test_mcnemar_non_binary_scores_b_raises_naming_argument() -> None:
         mcnemar_test([0.0, 1.0, 0.0, 1.0], [1.0, 0.25, 0.0, 1.0])
 
 
-# ---------------------------------------------------------------------------
-# permutation_test
-# ---------------------------------------------------------------------------
-
 _SMALL_A = [0.10, 0.40, 0.35, 0.80, 0.20, 0.60, 0.55, 0.30]
 _SMALL_B = [0.25, 0.42, 0.50, 0.78, 0.33, 0.71, 0.60, 0.41]
 
 
 def test_permutation_exact_branch_matches_brute_force_enumeration() -> None:
-    res = permutation_test(_SMALL_A, _SMALL_B, n_resamples=2_000, seed=0)  # 2^8 = 256 <= 2000
+    res = permutation_test(_SMALL_A, _SMALL_B, n_resamples=2_000, seed=0)
     expected = _brute_force_signflip_p(paired_diffs(_SMALL_A, _SMALL_B))
     assert res.test == "permutation-exact"
     assert res.p_value == pytest.approx(expected, rel=1e-12)
-    assert res.p_value > 0.0  # the observed assignment is in the enumeration
+    assert res.p_value > 0.0
     assert res.p_value >= 1.0 / 256.0
 
 
@@ -310,7 +279,7 @@ def test_permutation_exact_branch_matches_scipy() -> None:
     scipy_res = scipy_stats.permutation_test(
         (np.asarray(_SMALL_A, dtype=np.float64), np.asarray(_SMALL_B, dtype=np.float64)),
         mean_diff,
-        permutation_type="samples",  # flip within pairs; exact since n_resamples >= 2^8
+        permutation_type="samples",
         n_resamples=100_000,
         alternative="two-sided",
         vectorized=False,
@@ -331,7 +300,7 @@ def test_permutation_mc_branch_is_deterministic_and_named() -> None:
     rng = np.random.default_rng(2)
     a = rng.normal(0.5, 0.2, size=20)
     b = a + 0.08 + rng.normal(0.0, 0.15, size=20)
-    first = permutation_test(_floats(a), _floats(b), n_resamples=500, seed=5)  # 2^20 > 500
+    first = permutation_test(_floats(a), _floats(b), n_resamples=500, seed=5)
     second = permutation_test(_floats(a), _floats(b), n_resamples=500, seed=5)
     assert first.test == "permutation-mc"
     assert first == second
@@ -349,16 +318,11 @@ def test_permutation_mc_p_floor_for_huge_shift() -> None:
     assert res.p_value > 0.0
 
 
-# ---------------------------------------------------------------------------
-# Shared contracts across all three tests
-# ---------------------------------------------------------------------------
-
 _ALL_TESTS: list[PairedTest] = [paired_bootstrap_test, mcnemar_test, permutation_test]
 
 
 @pytest.mark.parametrize("test_fn", _ALL_TESTS, ids=lambda f: str(f.__name__))
 def test_ci_is_bootstrap_estimate_with_pair_count(test_fn: PairedTest) -> None:
-    # Binary scores so the same data is valid for mcnemar_test too.
     a = [0.0, 1.0] * 10
     b = [1.0, 1.0, 0.0, 1.0] + [0.0, 1.0] * 8
     res = test_fn(a, b, n_resamples=400, seed=0)

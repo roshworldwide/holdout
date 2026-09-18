@@ -1,5 +1,3 @@
-"""Core evaluation engine: Case, Eval, Target, Scorer, Run, and the runner."""
-
 from holdout.core.case import Case
 from holdout.core.evalset import Eval
 from holdout.core.run import CaseResult, Run

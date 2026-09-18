@@ -1,22 +1,3 @@
-"""The local dashboard server: read-only, localhost-only, zero new deps.
-
-Serves the bundled SPA plus a small JSON API over the local run store.
-Design contract (the air-gapped moat):
-
-- binds 127.0.0.1 only — never an external interface;
-- read-only — no endpoint mutates runs, the ledger, or anything else;
-- no model calls, no telemetry, 0 bytes leave the machine;
-- stdlib ``http.server`` — installing holdout never drags in a web stack.
-
-API (all JSON):
-
-- ``GET /api/meta``                          — version, store path, run count
-- ``GET /api/runs``                          — run listing with metric estimates
-- ``GET /api/runs/<run_id>``                 — one full run with metrics
-- ``GET /api/compare?baseline=X&candidate=Y[&alpha=A]`` — a RunComparison
-- ``GET /api/ledger``                        — holdout-discipline status per eval
-"""
-
 import json
 import webbrowser
 from functools import partial
@@ -30,8 +11,6 @@ from holdout.leakage.ledger import HoldoutLedger
 from holdout.regression.compare import compare
 from holdout.store.run_store import RunStore
 
-# Resamples for list-view estimates: cheaper than the single-run default but
-# still honest; the method string travels with every estimate either way.
 _LIST_RESAMPLES = 2_000
 
 _MIME = {
@@ -57,15 +36,12 @@ _MISSING_ASSETS = (
 
 
 class _Api:
-    """Read-only API over a run store (separated from HTTP for testability)."""
-
     def __init__(self, store: RunStore) -> None:
         self.store = store
         self.ledger = HoldoutLedger(store.root)
         self._metrics_cache: dict[str, dict[str, object]] = {}
 
     def _metrics(self, run_id: str, n_resamples: int) -> dict[str, object]:
-        # Runs are content-addressed, so this cache can never go stale.
         cached = self._metrics_cache.get(run_id)
         if cached is None:
             run = self.store.load(run_id)
@@ -74,7 +50,6 @@ class _Api:
         return cached
 
     def meta(self) -> dict[str, object]:
-        """Version and store identity."""
         return {
             "version": holdout.__version__,
             "store": str(self.store.root),
@@ -82,7 +57,6 @@ class _Api:
         }
 
     def runs(self) -> dict[str, object]:
-        """All stored runs, newest first, with their metric estimates."""
         out = []
         for info in self.store.runs():
             out.append(
@@ -101,7 +75,6 @@ class _Api:
         return {"runs": out}
 
     def run_detail(self, ref: str) -> dict[str, object]:
-        """One full run, including per-case results and metrics."""
         run = self.store.load(ref)
         payload = run.to_dict()
         payload["short_run_id"] = run.short_run_id
@@ -110,13 +83,11 @@ class _Api:
         return payload
 
     def compare(self, baseline: str, candidate: str, alpha: float) -> dict[str, object]:
-        """Compute a full statistical comparison on demand (nothing stored)."""
         a = self.store.load(baseline)
         b = self.store.load(candidate)
         return compare(a, b, alpha=alpha).to_dict()
 
     def ledger_status(self, budget: int = 20) -> dict[str, object]:
-        """Holdout-discipline status for every eval present in the store."""
         seen: dict[str, str] = {}
         for info in self.store.runs():
             run = self.store.load(info.run_id)
@@ -129,23 +100,19 @@ class _Api:
 
 
 def _assets_root() -> Path | None:
-    """Locate the bundled SPA, if it was built."""
     candidate = resources.files("holdout") / "dashboard_dist"
     path = Path(str(candidate))
     return path if (path / "index.html").exists() else None
 
 
 class _Handler(BaseHTTPRequestHandler):
-    """Routes /api/* to the API and everything else to the bundled SPA."""
-
-    # Injected via functools.partial in serve().
     def __init__(self, *args: object, api: _Api, assets: Path | None, **kwargs: object) -> None:
         self.api = api
         self.assets = assets
         super().__init__(*args, **kwargs)  # type: ignore[arg-type]
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
-        """Silence per-request logging (the CLI prints the URL once)."""
+        pass
 
     def _send(self, code: int, body: bytes, content_type: str) -> None:
         self.send_response(code)
@@ -159,7 +126,6 @@ class _Handler(BaseHTTPRequestHandler):
         self._send(code, json.dumps(payload).encode("utf-8"), "application/json")
 
     def do_GET(self) -> None:
-        """Serve one read-only GET request."""
         url = urlparse(self.path)
         try:
             if url.path.startswith("/api/"):
@@ -198,7 +164,6 @@ class _Handler(BaseHTTPRequestHandler):
             return
         name = path.lstrip("/") or "index.html"
         file = (self.assets / name).resolve()
-        # Path traversal guard + SPA fallback: unknown routes get index.html.
         if not file.is_relative_to(self.assets.resolve()) or not file.is_file():
             file = self.assets / "index.html"
         mime = _MIME.get(file.suffix, "application/octet-stream")
@@ -206,13 +171,11 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 def make_server(store: RunStore, *, port: int = 0) -> ThreadingHTTPServer:
-    """Build the localhost-only server (port 0 = pick a free port)."""
     handler = partial(_Handler, api=_Api(store), assets=_assets_root())
     return ThreadingHTTPServer(("127.0.0.1", port), handler)
 
 
 def serve(store: RunStore, *, port: int = 4321, open_browser: bool = True) -> None:
-    """Run the dashboard until interrupted."""
     server = make_server(store, port=port)
     url = f"http://127.0.0.1:{server.server_address[1]}/"
     print(f"holdout dashboard → {url}  (read-only, local, Ctrl+C to stop)")

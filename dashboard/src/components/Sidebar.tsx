@@ -1,5 +1,3 @@
-/** Translucent chrome-glass sidebar: views, evals with ledger dots, theme. */
-
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useStore } from "../data";
 import { useTheme, type ThemePref } from "../theme";

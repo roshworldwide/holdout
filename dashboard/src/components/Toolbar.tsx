@@ -1,5 +1,3 @@
-/** Unified translucent toolbar; the page's large title condenses into it. */
-
 import { AnimatePresence, motion } from "framer-motion";
 import { useStore } from "../data";
 import { useTitle } from "../title";

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-/** Measure an element's content width with a ResizeObserver. */
 export function useMeasure<T extends HTMLElement>(): [
   React.RefObject<T | null>,
   number,

@@ -1,5 +1,3 @@
-"""Tests for holdout.stats.correction and holdout.stats.power."""
-
 import math
 from collections.abc import Sequence
 from itertools import pairwise
@@ -17,7 +15,6 @@ from holdout.stats.power import (
     sd_diff_from_scores,
 )
 
-# z_{0.975} + z_{0.80} for the default alpha=0.05 / power=0.80 design.
 _Z_SUM = 1.9599639845 + 0.8416212336
 
 
@@ -43,11 +40,6 @@ def _scipy_bh(p_values: Sequence[float]) -> list[float]:
     return [float(x) for x in ref]
 
 
-# ---------------------------------------------------------------------------
-# benjamini_hochberg
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.parametrize(
     "p_values",
     [
@@ -67,8 +59,6 @@ def test_bh_matches_scipy_random_vectors(p_values: list[float]) -> None:
 
 
 def test_bh_worked_example_values() -> None:
-    # p_(i) * m / i for [0.01..0.05], m=5: [0.05, 0.05, 0.05, 0.05, 0.05]
-    # (each raw q_i = 0.01*i*5/i = 0.05; cumulative min leaves them equal).
     q = benjamini_hochberg([0.01, 0.02, 0.03, 0.04, 0.05])
     _assert_elementwise_close(q, [0.05, 0.05, 0.05, 0.05, 0.05])
 
@@ -117,13 +107,9 @@ def test_bh_nan_raises(p_values: list[float]) -> None:
 @pytest.mark.parametrize("p_values", _random_p_vectors(seed=99, count=5, max_len=20))
 def test_bh_monotone_dominates_p_and_capped(p_values: list[float]) -> None:
     q = benjamini_hochberg(p_values)
-    # q sorted by ascending p must be non-decreasing.
     order = sorted(range(len(p_values)), key=lambda i: p_values[i])
     q_by_p = [q[i] for i in order]
     assert all(lo <= hi + 1e-15 for lo, hi in pairwise(q_by_p))
-    # Adjustment never shrinks a p-value (up to a 1-ulp float artifact:
-    # correction.py computes (p * m) / i, which for i == m can round one ulp
-    # below p; scipy multiplies by m/i == 1.0 exactly), and is capped at 1.
     assert all(qi >= pi - 1e-12 for qi, pi in zip(q, p_values, strict=True))
     assert all(qi <= 1.0 for qi in q)
 
@@ -134,15 +120,7 @@ def test_bh_caps_at_one() -> None:
     assert all(qi <= 1.0 for qi in q)
 
 
-# ---------------------------------------------------------------------------
-# holm_bonferroni
-# ---------------------------------------------------------------------------
-
-
 def test_holm_hand_worked_example() -> None:
-    # p=[0.01, 0.04, 0.03], m=3. Sorted: [0.01, 0.03, 0.04].
-    # Raw: [3*0.01, 2*0.03, 1*0.04] = [0.03, 0.06, 0.04].
-    # Cumulative max: [0.03, 0.06, 0.06]. Back to input order: [0.03, 0.06, 0.06].
     q = holm_bonferroni([0.01, 0.04, 0.03])
     _assert_elementwise_close(q, [0.03, 0.06, 0.06], tol=1e-15)
 
@@ -158,8 +136,6 @@ def test_holm_q_geq_p_capped_and_monotone(p_values: list[float]) -> None:
 
 
 def test_holm_caps_at_one() -> None:
-    # Raw sorted values [3*0.5, 2*0.6, 1*0.9] = [1.5, 1.2, 0.9];
-    # cummax then clip => all 1.0.
     assert holm_bonferroni([0.5, 0.6, 0.9]) == [1.0, 1.0, 1.0]
 
 
@@ -185,11 +161,6 @@ def test_holm_is_at_least_as_strict_as_bh() -> None:
     assert all(h >= b - 1e-15 for h, b in zip(q_holm, q_bh, strict=True))
 
 
-# ---------------------------------------------------------------------------
-# minimum_detectable_effect / required_sample_size
-# ---------------------------------------------------------------------------
-
-
 def test_mde_hand_check_n100_sd_half() -> None:
     pa = minimum_detectable_effect(100, 0.5)
     assert pa.mde == pytest.approx(_Z_SUM * 0.5 / math.sqrt(100), rel=1e-9)
@@ -207,7 +178,6 @@ def test_mde_scales_inversely_with_sqrt_n() -> None:
 
 
 def test_required_sample_size_hand_check() -> None:
-    # n = ceil((2.8015852181 * 0.35 / 0.05)^2) = ceil(384.595...) = 385
     pa = required_sample_size(0.05, 0.35)
     assert pa.n == 385
     assert pa.mde == 0.05
@@ -218,7 +188,7 @@ def test_required_sample_size_inverts_mde() -> None:
     original_n = 100
     pa = minimum_detectable_effect(original_n, 0.5)
     back = required_sample_size(pa.mde, 0.5)
-    assert back.n <= original_n  # ceil effects only ever round n up to the exact design
+    assert back.n <= original_n
 
 
 def test_mde_at_required_n_is_detectable() -> None:
@@ -268,18 +238,11 @@ def test_required_sample_size_floored_at_two() -> None:
     assert pa.n == 2
 
 
-# ---------------------------------------------------------------------------
-# paired_binary_sd
-# ---------------------------------------------------------------------------
-
-
 def test_paired_binary_sd_symmetric_discordance() -> None:
-    # Var = 0.1 + 0.1 - 0^2 = 0.2
     assert paired_binary_sd(0.1, 0.1) == pytest.approx(math.sqrt(0.2), rel=1e-12)
 
 
 def test_paired_binary_sd_one_sided_discordance() -> None:
-    # Var = 0.2 + 0 - 0.2^2 = 0.16 => sd = 0.4
     assert paired_binary_sd(0.2, 0.0) == pytest.approx(0.4, rel=1e-12)
 
 
@@ -291,11 +254,6 @@ def test_paired_binary_sd_degenerate_zero() -> None:
 def test_paired_binary_sd_invalid_raises(p01: float, p10: float) -> None:
     with pytest.raises(ValueError, match="p01 and p10 must be >= 0"):
         paired_binary_sd(p01, p10)
-
-
-# ---------------------------------------------------------------------------
-# sd_diff_from_scores
-# ---------------------------------------------------------------------------
 
 
 def test_sd_diff_from_scores_matches_numpy() -> None:
@@ -317,16 +275,11 @@ def test_sd_diff_from_scores_too_few_pairs_raises() -> None:
         sd_diff_from_scores([0.5], [0.7])
 
 
-# ---------------------------------------------------------------------------
-# PowerAnalysis
-# ---------------------------------------------------------------------------
-
-
 def test_power_analysis_str_contains_fields() -> None:
     pa = minimum_detectable_effect(100, 0.5)
     rendered = str(pa)
     assert "n=100" in rendered
-    assert f"{pa.mde:.4f}" in rendered  # 0.1401
+    assert f"{pa.mde:.4f}" in rendered
     assert "0.1401" in rendered
     assert "alpha=0.05" in rendered
     assert "power 0.8" in rendered

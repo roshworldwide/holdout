@@ -1,13 +1,3 @@
-"""Leakage detection and holdout discipline.
-
-Three ways an eval lies, three checks:
-
-- :func:`check_contamination` — eval cases hiding in prompt/few-shot text;
-- :func:`find_near_duplicates` — near-copies inflating the effective n;
-- :class:`HoldoutLedger` — counting adaptive reuses of the same eval set
-  (overfitting-to-eval, the silent killer).
-"""
-
 from holdout.leakage.contamination import (
     ContaminationFinding,
     ContaminationReport,

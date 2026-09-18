@@ -1,10 +1,3 @@
-"""The runner: executes an Eval against a Target, concurrently and seeded.
-
-Cases run under bounded async concurrency so a 1,000-case eval is I/O-bound,
-not framework-bound. Failures are recorded per case — one flaky provider
-call never aborts a run; it shows up honestly in the error count instead.
-"""
-
 import asyncio
 from datetime import UTC, datetime
 from time import perf_counter
@@ -24,8 +17,7 @@ async def _run_case(
     seed: int | None,
     sem: asyncio.Semaphore,
 ) -> CaseResult:
-    """Generate and score one case, recording any failure on the result."""
-    assert case.id is not None  # Eval normalization guarantees ids
+    assert case.id is not None
     async with sem:
         t0 = perf_counter()
         try:
@@ -62,20 +54,6 @@ async def arun(
     seed: int | None = None,
     max_concurrency: int = 8,
 ) -> Run:
-    """Run ``ev`` against ``target`` and return an immutable :class:`Run`.
-
-    Parameters
-    ----------
-    ev
-        The eval to run.
-    target
-        The system under evaluation.
-    seed
-        Seed threaded to the target (where the backend supports it) and into
-        the run's identity. Same seed + same inputs => identical run hash.
-    max_concurrency
-        Maximum number of cases in flight at once.
-    """
     if max_concurrency < 1:
         raise ValueError(f"max_concurrency must be >= 1, got {max_concurrency}")
     sem = asyncio.Semaphore(max_concurrency)
@@ -103,13 +81,6 @@ def run(
     seed: int | None = None,
     max_concurrency: int = 8,
 ) -> Run:
-    """Run ``ev`` against ``target`` synchronously (facade over :func:`arun`).
-
-    Raises
-    ------
-    RuntimeError
-        If called from inside a running event loop — use :func:`arun` there.
-    """
     try:
         asyncio.get_running_loop()
     except RuntimeError:

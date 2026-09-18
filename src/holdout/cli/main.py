@@ -1,12 +1,3 @@
-"""The holdout CLI: run, compare, list, report, power, check.
-
-Exit codes are CI-grade contracts:
-
-- ``compare``: 0 = no significant regression, 1 = regression detected,
-  2 = insufficient data (refusing to certify).
-- ``check``: 0 = clean, 1 = leakage or duplicates found.
-"""
-
 import argparse
 import sys
 from collections.abc import Sequence
@@ -174,8 +165,6 @@ def _cmd_compare(args: argparse.Namespace, console: Console) -> int:
         else:
             from rich.markup import escape
 
-            # escape(): the report text contains "[ok]"-style level tags
-            # that Rich would otherwise swallow as markup.
             style = {"ok": "dim", "caution": "yellow", "overfit-risk": "bold red"}[report.level]
             console.print(f"[{style}]{escape(str(report))}[/]")
 
@@ -276,7 +265,7 @@ def _cmd_dashboard(args: argparse.Namespace, console: Console) -> int:
     from holdout.dashboard.server import serve
     from holdout.store.run_store import RunStore
 
-    del console  # serve() prints its own one-line banner
+    del console
     serve(RunStore(args.store), port=args.port, open_browser=not args.no_open)
     return 0
 
@@ -293,7 +282,6 @@ _COMMANDS = {
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Parse arguments, dispatch, and return the exit code."""
     args = _build_parser().parse_args(argv)
     console = Console()
     try:
@@ -305,5 +293,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def app() -> None:
-    """Console-script entry point."""
     sys.exit(main())

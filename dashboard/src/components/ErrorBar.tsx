@@ -1,13 +1,9 @@
-/** A compact inline CI error bar: track, whisker with end caps, value dot.
- *  Draws in with a spring, scaling outward from the value point. */
-
 import { motion } from "framer-motion";
 import type { Estimate } from "../api";
 import { useMeasure } from "../hooks";
 
 interface ErrorBarProps {
   estimate: Estimate;
-  /** Axis domain; defaults to a padded window around the CI itself. */
   domain?: [number, number];
   color?: string;
   height?: number;
@@ -39,7 +35,6 @@ export function ErrorBar({
     <div ref={ref} style={{ width: "100%" }}>
       {width > 0 && (
         <svg width={width} height={height} aria-hidden>
-          {/* full-domain track */}
           <line
             x1={pad}
             x2={width - pad}

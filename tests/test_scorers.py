@@ -1,5 +1,3 @@
-"""Tests for holdout.scorers: ExactMatch, RegexMatch, cosine_similarity, EmbeddingSimilarity."""
-
 from collections.abc import Sequence
 
 import pytest
@@ -13,19 +11,12 @@ from holdout.scorers import (
     cosine_similarity,
 )
 
-# ---------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------
-
 
 def make_case(reference: str | None = "expected") -> Case:
-    """A minimal case with a controllable reference."""
     return Case(input="prompt", reference=reference)
 
 
 class FakeBackend:
-    """Local embedding backend returning fixed vectors per text."""
-
     def __init__(self, vectors: dict[str, list[float]], name: str = "fake:test") -> None:
         self._vectors = vectors
         self._name = name
@@ -38,11 +29,6 @@ class FakeBackend:
         return [list(self._vectors[t]) for t in texts]
 
 
-# ---------------------------------------------------------------------------
-# ExactMatch
-# ---------------------------------------------------------------------------
-
-
 async def test_exact_match_normalized_strips_casefolds_and_collapses_whitespace() -> None:
     scorer = ExactMatch(normalize=True)
     score = await scorer.score(Case(input="q", reference="  Hello   World "), "hello world")
@@ -51,7 +37,7 @@ async def test_exact_match_normalized_strips_casefolds_and_collapses_whitespace(
 
 
 async def test_exact_match_normalized_handles_tabs_and_newlines() -> None:
-    scorer = ExactMatch()  # normalize defaults to True
+    scorer = ExactMatch()
     score = await scorer.score(Case(input="q", reference="A\tB\nC"), "  a b   c ")
     assert score.value == 1.0
 
@@ -92,11 +78,6 @@ def test_exact_match_fingerprint_differs_by_normalize() -> None:
     assert ExactMatch(normalize=True).fingerprint == ExactMatch(normalize=True).fingerprint
 
 
-# ---------------------------------------------------------------------------
-# RegexMatch
-# ---------------------------------------------------------------------------
-
-
 async def test_regex_match_searches_anywhere() -> None:
     scorer = RegexMatch(r"\d{3}")
     assert (await scorer.score(make_case(), "order id is 123, thanks")).value == 1.0
@@ -120,9 +101,8 @@ async def test_regex_match_ignore_case_flag() -> None:
 async def test_regex_match_needs_no_reference() -> None:
     scorer = RegexMatch("ok")
     assert RegexMatch.requires_reference is False
-    score = await scorer.score(Case(input="q"), "ok then")  # reference-less case
+    score = await scorer.score(Case(input="q"), "ok then")
     assert score.value == 1.0
-    # An Eval with reference-less cases accepts a regex scorer.
     ev = Eval(name="regex-only", cases=[Case(input="q")], scorers=[RegexMatch("ok")])
     assert len(ev) == 1
 
@@ -142,11 +122,6 @@ async def test_regex_match_scores_are_binary_kind() -> None:
     assert miss.kind == "binary"
     assert hit.value == 1.0
     assert miss.value == 0.0
-
-
-# ---------------------------------------------------------------------------
-# cosine_similarity
-# ---------------------------------------------------------------------------
 
 
 def test_cosine_identical_vectors() -> None:
@@ -172,11 +147,6 @@ def test_cosine_dimension_mismatch_raises() -> None:
         cosine_similarity([1.0, 2.0], [1.0, 2.0, 3.0])
 
 
-# ---------------------------------------------------------------------------
-# EmbeddingSimilarity
-# ---------------------------------------------------------------------------
-
-
 async def test_embedding_continuous_mode_returns_raw_cosine() -> None:
     backend = FakeBackend({"out": [1.0, 0.0], "ref": [1.0, 1.0]})
     scorer = EmbeddingSimilarity(backend)
@@ -196,7 +166,6 @@ async def test_embedding_continuous_identical_texts_score_one() -> None:
 
 
 async def test_embedding_threshold_passes_at_exactly_threshold() -> None:
-    # Orthogonal vectors: cosine is exactly 0.0, and 0.0 >= 0.0 must pass.
     backend = FakeBackend({"out": [1.0, 0.0], "ref": [0.0, 1.0]})
     scorer = EmbeddingSimilarity(backend, threshold=0.0)
     score = await scorer.score(Case(input="q", reference="ref"), "out")
@@ -205,7 +174,7 @@ async def test_embedding_threshold_passes_at_exactly_threshold() -> None:
 
 
 async def test_embedding_threshold_fails_below_threshold() -> None:
-    backend = FakeBackend({"out": [1.0, 0.0], "ref": [-1.0, 0.0]})  # cosine -1.0
+    backend = FakeBackend({"out": [1.0, 0.0], "ref": [-1.0, 0.0]})
     scorer = EmbeddingSimilarity(backend, threshold=0.0)
     score = await scorer.score(Case(input="q", reference="ref"), "out")
     assert score.value == 0.0
@@ -213,7 +182,7 @@ async def test_embedding_threshold_fails_below_threshold() -> None:
 
 
 async def test_embedding_threshold_passes_above_threshold() -> None:
-    backend = FakeBackend({"out": [2.0, 0.0], "ref": [5.0, 0.0]})  # cosine 1.0
+    backend = FakeBackend({"out": [2.0, 0.0], "ref": [5.0, 0.0]})
     scorer = EmbeddingSimilarity(backend, threshold=0.5)
     score = await scorer.score(Case(input="q", reference="ref"), "out")
     assert score.value == 1.0
@@ -263,7 +232,7 @@ def test_embedding_requires_reference() -> None:
     with pytest.raises(ValueError, match="requires a reference"):
         Eval(
             name="needs-refs",
-            cases=[Case(input="q")],  # no reference
+            cases=[Case(input="q")],
             scorers=[EmbeddingSimilarity(backend)],
         )
 

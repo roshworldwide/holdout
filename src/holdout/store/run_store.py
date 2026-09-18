@@ -1,14 +1,3 @@
-"""The run store: versioned, content-addressed persistence for Runs.
-
-Layout under the store root (default ``.holdout/``):
-
-- ``runs/<run_id>.json`` — one artifact per run, named by its content hash,
-  so saving is idempotent and two stores can be merged by copying files.
-- ``index.sqlite3`` — a rebuildable index for fast listing; the JSON
-  artifacts are the source of truth and :meth:`RunStore.reindex` restores
-  the index from them at any time.
-"""
-
 import json
 import sqlite3
 from contextlib import closing
@@ -33,8 +22,6 @@ CREATE INDEX IF NOT EXISTS idx_runs_eval ON runs (eval_name, created_at);
 
 @dataclass(frozen=True, slots=True)
 class StoredRunInfo:
-    """A lightweight index row describing one stored run."""
-
     run_id: str
     eval_name: str
     target_name: str
@@ -45,19 +32,10 @@ class StoredRunInfo:
 
     @property
     def short_run_id(self) -> str:
-        """Twelve-character display prefix of the run id."""
         return self.run_id[:12]
 
 
 class RunStore:
-    """Save, list, and load Runs from a local directory.
-
-    Parameters
-    ----------
-    root
-        Store directory (created if missing). Default ``".holdout"``.
-    """
-
     def __init__(self, root: str | Path = ".holdout") -> None:
         self.root = Path(root)
         self.runs_dir = self.root / "runs"
@@ -70,10 +48,6 @@ class RunStore:
         return sqlite3.connect(self._db_path)
 
     def save(self, run: Run) -> Path:
-        """Persist ``run``; idempotent because the artifact is content-addressed.
-
-        Returns the path of the JSON artifact.
-        """
         path = self.runs_dir / f"{run.run_id}.json"
         if not path.exists():
             tmp = path.with_suffix(".json.tmp")
@@ -81,7 +55,7 @@ class RunStore:
                 json.dumps(run.to_dict(), sort_keys=True, indent=2, ensure_ascii=False) + "\n",
                 encoding="utf-8",
             )
-            tmp.replace(path)  # atomic on POSIX: a reader never sees a partial file
+            tmp.replace(path)
         self._index(run)
         return path
 
@@ -103,14 +77,6 @@ class RunStore:
             )
 
     def load(self, ref: str) -> Run:
-        """Load a run by full run id or unambiguous prefix.
-
-        Raises
-        ------
-        KeyError
-            If no run matches ``ref``, or if the prefix is ambiguous (the
-            message lists the candidates).
-        """
         if not ref:
             raise KeyError("empty run reference")
         exact = self.runs_dir / f"{ref}.json"
@@ -139,7 +105,6 @@ class RunStore:
     def runs(
         self, *, eval_name: str | None = None, limit: int | None = None
     ) -> list[StoredRunInfo]:
-        """List stored runs, newest first, optionally filtered by eval name."""
         query = (
             "SELECT run_id, eval_name, target_name, created_at, n_cases, n_errors, seed FROM runs"
         )
@@ -156,14 +121,12 @@ class RunStore:
         return [StoredRunInfo(*row) for row in rows]
 
     def latest(self, *, eval_name: str | None = None, target_name: str | None = None) -> Run | None:
-        """Load the most recent run, optionally filtered by eval/target name."""
         for info in self.runs(eval_name=eval_name):
             if target_name is None or info.target_name == target_name:
                 return self.load(info.run_id)
         return None
 
     def reindex(self) -> int:
-        """Rebuild the SQLite index from the JSON artifacts; returns row count."""
         with closing(self._connect()) as conn, conn:
             conn.execute("DELETE FROM runs")
         count = 0

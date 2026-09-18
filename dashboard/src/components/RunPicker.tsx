@@ -1,5 +1,3 @@
-/** Glass popover picker for choosing a run (baseline or candidate). */
-
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import type { RunSummary } from "../api";
@@ -8,7 +6,7 @@ import { IconChevronDown } from "./Icons";
 
 interface RunPickerProps {
   role: string;
-  runs: RunSummary[]; // candidates to choose from (same eval), newest first
+  runs: RunSummary[];
   selected: RunSummary | undefined;
   metric?: string;
   onSelect: (run: RunSummary) => void;

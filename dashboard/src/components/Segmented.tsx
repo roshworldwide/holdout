@@ -1,5 +1,3 @@
-/** Apple-style segmented control with a sprung sliding thumb. */
-
 import { motion } from "framer-motion";
 import { useId, type ReactNode } from "react";
 

@@ -1,5 +1,3 @@
-/** App shell: ambient background, chrome sidebar, toolbar, routed views. */
-
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useRef, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";

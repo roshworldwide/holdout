@@ -1,5 +1,3 @@
-"""Tests for holdout.leakage: contamination, duplicates, and the ledger."""
-
 import json
 from collections.abc import Sequence
 from pathlib import Path
@@ -25,13 +23,7 @@ def make_eval(cases: list[Case]) -> Eval:
 
 
 def make_eval_noref(cases: list[Case]) -> Eval:
-    """Eval for reference-less cases (RegexMatch needs no reference)."""
     return Eval("leak-test", cases, [RegexMatch("x")])
-
-
-# ---------------------------------------------------------------------------
-# n-gram primitives
-# ---------------------------------------------------------------------------
 
 
 def test_normalize_casefolds_and_collapses_whitespace() -> None:
@@ -45,7 +37,7 @@ def test_tokens_strip_punctuation() -> None:
 def test_word_ngrams_basics() -> None:
     grams = word_ngrams("a b c d", 3)
     assert grams == {("a", "b", "c"), ("b", "c", "d")}
-    assert word_ngrams("a b", 5) == {("a", "b")}  # short text: one full-token gram
+    assert word_ngrams("a b", 5) == {("a", "b")}
     assert word_ngrams("", 3) == set()
     with pytest.raises(ValueError, match="n must be >= 1"):
         word_ngrams("a b", 0)
@@ -59,10 +51,6 @@ def test_containment_and_jaccard() -> None:
     assert jaccard(set(), set()) == 0.0
     assert jaccard(a, set()) == 0.0
 
-
-# ---------------------------------------------------------------------------
-# contamination (n-gram)
-# ---------------------------------------------------------------------------
 
 PROMPT = (
     "You are a support assistant. Example: customers often ask how do I reset "
@@ -106,8 +94,6 @@ def test_reference_leakage_is_caught() -> None:
 
 
 def test_ngram_overlap_catches_near_verbatim() -> None:
-    # Same sentence as the prompt with the tail changed: not an exact
-    # substring, but most 5-grams survive.
     near = Case(
         input="customers often ask how do I reset my password on the desktop site",
         reference="x",
@@ -124,7 +110,7 @@ def test_ngram_overlap_catches_near_verbatim() -> None:
 def test_short_fields_skip_ngram_but_not_substring() -> None:
     short_clean = Case(input="Reset how?", reference="security reset", id="s1")
     report = check_contamination(make_eval([short_clean]), PROMPT)
-    assert report.clean  # too short for n-grams, not a substring
+    assert report.clean
 
     short_leaked = Case(input="Reset how?", reference="then security then reset", id="s2")
     report = check_contamination(make_eval([short_leaked]), PROMPT)
@@ -159,14 +145,7 @@ def test_threshold_validation_and_to_dict() -> None:
     assert payload["clean"] is True
 
 
-# ---------------------------------------------------------------------------
-# contamination (embeddings)
-# ---------------------------------------------------------------------------
-
-
 class FakeBackend:
-    """Maps known texts to fixed vectors; unknown texts to an orthogonal one."""
-
     def __init__(self, table: dict[str, list[float]]) -> None:
         self._table = table
 
@@ -205,11 +184,6 @@ async def test_embedding_contamination_validation() -> None:
         await check_contamination_embeddings(ev, [], backend)
 
 
-# ---------------------------------------------------------------------------
-# near-duplicates
-# ---------------------------------------------------------------------------
-
-
 def test_identical_inputs_with_distinct_ids_score_one() -> None:
     ev = make_eval(
         [
@@ -237,18 +211,12 @@ def test_near_duplicates_sorted_and_thresholded() -> None:
         find_near_duplicates(ev, threshold=0.0)
 
 
-# ---------------------------------------------------------------------------
-# holdout ledger
-# ---------------------------------------------------------------------------
-
-
 def test_ledger_counts_and_persists(tmp_path: Path) -> None:
     ledger = HoldoutLedger(tmp_path)
     assert ledger.uses("fp1") == 0
     assert ledger.record_use("fp1", "qa", context="PR #12") == 1
     assert ledger.record_use("fp1", "qa") == 2
-    assert ledger.record_use("fp2", "other") == 1  # fingerprints are isolated
-    # Persists across instances on the same root.
+    assert ledger.record_use("fp2", "other") == 1
     assert HoldoutLedger(tmp_path).uses("fp1") == 2
 
 
@@ -269,11 +237,6 @@ def test_ledger_levels(tmp_path: Path) -> None:
     assert json.loads(json.dumps(report.to_dict()))["uses"] == 4
     with pytest.raises(ValueError, match="budget"):
         ledger.check("fp", "qa", budget=0)
-
-
-# ---------------------------------------------------------------------------
-# assert_no_leakage
-# ---------------------------------------------------------------------------
 
 
 def test_assert_no_leakage_passes_on_clean_eval() -> None:
@@ -301,8 +264,6 @@ def test_assert_no_leakage_raises_on_duplicates_and_can_skip() -> None:
             Case(input="summarize the quarterly revenue report for asia", id="b"),
         ]
     )
-    # This pair shares 4 of 6 distinct 3-grams (Jaccard 0.67): flagged at
-    # 0.6, ignored at the stricter default of 0.8, skippable with None.
     with pytest.raises(AssertionError, match="inflate the effective sample size"):
         assert_no_leakage(ev, "an unrelated system prompt", duplicate_threshold=0.6)
     assert_no_leakage(ev, "an unrelated system prompt")

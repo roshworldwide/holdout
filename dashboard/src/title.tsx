@@ -1,5 +1,3 @@
-/** Page title plumbing: views declare a title; the toolbar condenses it. */
-
 import {
   createContext,
   useContext,

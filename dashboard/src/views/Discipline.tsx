@@ -1,5 +1,3 @@
-/** Discipline: holdout-ledger budgets per eval, with the Dwork framing. */
-
 import { motion } from "framer-motion";
 import { GlassCard, StateCard } from "../components/Glass";
 import { ProgressArc } from "../components/ProgressArc";

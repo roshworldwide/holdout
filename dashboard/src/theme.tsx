@@ -1,5 +1,3 @@
-/** Theme: auto / light / dark, resolved to a data-theme attribute on <html>. */
-
 import {
   createContext,
   useCallback,
@@ -25,7 +23,6 @@ function readPref(): ThemePref {
     const v = localStorage.getItem(KEY);
     if (v === "light" || v === "dark" || v === "auto") return v;
   } catch {
-    /* private mode etc. */
   }
   return "auto";
 }
@@ -46,7 +43,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(KEY, p);
     } catch {
-      /* ignore */
     }
     apply(p);
   }, []);

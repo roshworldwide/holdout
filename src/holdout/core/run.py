@@ -1,12 +1,3 @@
-"""The Run: an immutable, content-addressed record of one evaluation.
-
-A Run's identity (``run_id``) is the hash of its semantic content — eval
-fingerprint, target fingerprint, scorer fingerprints, seed, and per-case
-results. Wall-clock fields (timestamps, latencies) are recorded but excluded
-from the hash, so the determinism guarantee holds: same seed + same inputs
-=> identical run hash.
-"""
-
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -19,22 +10,6 @@ from holdout.stats.estimate import Estimate
 
 @dataclass(frozen=True, slots=True)
 class CaseResult:
-    """The outcome of one case within a run.
-
-    Parameters
-    ----------
-    case_id
-        Id of the case this result belongs to (pairs results across runs).
-    output
-        The target's output text, or ``None`` if generation failed.
-    scores
-        Scores keyed by scorer name. May be partial if a scorer errored.
-    error
-        Error description if generation or any scorer failed.
-    latency_s
-        Wall-clock generation latency (excluded from the run hash).
-    """
-
     case_id: str
     output: str | None
     scores: Mapping[str, Score] = field(default_factory=dict)
@@ -42,7 +17,6 @@ class CaseResult:
     latency_s: float = 0.0
 
     def to_dict(self) -> dict[str, object]:
-        """Return a JSON-serializable representation."""
         return {
             "case_id": self.case_id,
             "output": self.output,
@@ -54,26 +28,6 @@ class CaseResult:
 
 @dataclass(frozen=True)
 class Run:
-    """An immutable record of one evaluation run.
-
-    Parameters
-    ----------
-    eval_name, eval_fingerprint
-        Identity of the dataset that was evaluated.
-    target_name, target_fingerprint
-        Identity of the system under evaluation.
-    scorer_names, scorer_fingerprints
-        Identity of the measurements applied.
-    seed
-        The seed threaded through generation and aggregation.
-    results
-        Per-case results, in eval case order.
-    created_at
-        ISO-8601 UTC timestamp (excluded from the run hash).
-    holdout_version
-        Version of holdout that produced the run (excluded from the hash).
-    """
-
     eval_name: str
     eval_fingerprint: str
     target_name: str
@@ -87,7 +41,6 @@ class Run:
 
     @cached_property
     def run_id(self) -> str:
-        """Content hash of the run's semantic fields (full SHA-256 hex)."""
         return fingerprint(
             {
                 "eval_name": self.eval_name,
@@ -109,20 +62,13 @@ class Run:
 
     @property
     def short_run_id(self) -> str:
-        """Twelve-character display prefix of :attr:`run_id`."""
         return short_id(self.run_id)
 
     @property
     def n_errors(self) -> int:
-        """Number of cases that failed generation or scoring."""
         return sum(1 for r in self.results if r.error is not None)
 
     def case_scores(self, scorer_name: str) -> dict[str, float]:
-        """Return per-case score values for one scorer, keyed by case id.
-
-        This is raw paired data (the input to the statistics engine), not a
-        reported metric — cases that errored for this scorer are absent.
-        """
         if scorer_name not in self.scorer_names:
             raise KeyError(
                 f"unknown scorer {scorer_name!r}; this run has {list(self.scorer_names)}"
@@ -132,20 +78,12 @@ class Run:
         }
 
     def score_kind(self, scorer_name: str) -> ScoreKind:
-        """Return the score kind (``"binary"``/``"continuous"``) for a scorer."""
         for r in self.results:
             if scorer_name in r.scores:
                 return r.scores[scorer_name].kind
         raise KeyError(f"no scores recorded for scorer {scorer_name!r}")
 
     def metrics(self, *, level: float = 0.95, n_resamples: int = 10_000) -> dict[str, Estimate]:
-        """Aggregate each scorer's per-case scores into an :class:`Estimate`.
-
-        There is no API that returns a bare aggregate float: every metric
-        carries a bootstrap confidence interval. The bootstrap RNG is seeded
-        from the run hash, so the same run always reports identical
-        intervals.
-        """
         agg_seed = int(self.run_id[:8], 16)
         out: dict[str, Estimate] = {}
         for name in self.scorer_names:
@@ -156,7 +94,6 @@ class Run:
         return out
 
     def summary(self, *, level: float = 0.95) -> str:
-        """Render a human-readable summary — every metric with its interval."""
         lines = [
             f"{self.eval_name}  n={len(self.results)}  target={self.target_name}  "
             f"run={self.short_run_id}"
@@ -173,7 +110,6 @@ class Run:
         return "\n".join(lines)
 
     def to_dict(self) -> dict[str, object]:
-        """Return a JSON-serializable representation (used by the run store)."""
         return {
             "run_id": self.run_id,
             "eval_name": self.eval_name,
@@ -190,15 +126,6 @@ class Run:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, object]) -> "Run":
-        """Reconstruct a Run from :meth:`to_dict` output.
-
-        Raises
-        ------
-        ValueError
-            If ``data`` does not have the expected structure, with context
-            naming the offending field.
-        """
-
         def _str_field(key: str) -> str:
             value = data.get(key)
             if not isinstance(value, str):

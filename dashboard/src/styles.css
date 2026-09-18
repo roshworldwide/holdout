@@ -1,27 +1,17 @@
-/* ============================================================
-   holdout dashboard — Liquid Glass design system
-   macOS 26 Tahoe material language: layered translucency,
-   specular edges, SF type, 8pt grid, Starlight Gold accent.
-   ============================================================ */
-
 :root {
-  /* type */
   --font-text: -apple-system, "SF Pro Display", "SF Pro Text", "SF Pro",
     system-ui, "Helvetica Neue", sans-serif;
   --font-mono: "SF Mono", ui-monospace, "Menlo", "Monaco", monospace;
 
-  /* semantic */
   --red: #e5484d;
   --green: #46a758;
 
-  /* concentric radii (outer − padding = inner) */
   --r-panel: 26px;
   --r-card: 20px;
   --r-inner: 12px;
   --r-control: 9px;
   --r-thumb: 7px;
 
-  /* light canvas: layered aluminum */
   color-scheme: light;
   --canvas: #f2f2f4;
   --canvas-sheen: linear-gradient(
@@ -34,8 +24,8 @@
   --text-2: rgba(22, 22, 26, 0.55);
   --text-3: rgba(22, 22, 26, 0.36);
   --gold: #c9a876;
-  --gold-ink: #8f6f3f; /* gold that reads as text on light glass */
-  --gold-data: #b3905a; /* data line on light canvas */
+  --gold-ink: #8f6f3f;
+  --gold-data: #b3905a;
 
   --glass-bg: rgba(255, 255, 255, 0.5);
   --glass-bg-elev: rgba(255, 255, 255, 0.64);
@@ -104,8 +94,6 @@
   --grid-line: rgba(255, 255, 255, 0.055);
 }
 
-/* ---------- base ---------- */
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -145,8 +133,6 @@ button {
 .num {
   font-variant-numeric: tabular-nums;
 }
-
-/* ---------- ambient background the glass refracts ---------- */
 
 .ambient {
   position: fixed;
@@ -271,8 +257,6 @@ button {
   }
 }
 
-/* ---------- glass materials (three tiers) ---------- */
-
 .glass,
 .glass-elev,
 .glass-chrome {
@@ -300,7 +284,6 @@ button {
   box-shadow: inset 0 1px 0 0 var(--glass-edge), inset 0 0 0 1px var(--glass-border);
 }
 
-/* cursor-following specular highlight (set --mx / --my from JS) */
 .card {
   border-radius: var(--r-card);
   isolation: isolate;
@@ -325,8 +308,6 @@ button {
 .card:hover::after {
   opacity: 1;
 }
-
-/* ---------- app shell ---------- */
 
 .app {
   position: relative;
@@ -466,8 +447,6 @@ button {
   white-space: nowrap;
 }
 
-/* ---------- main scroll pane + toolbar ---------- */
-
 .main {
   flex: 1;
   min-width: 0;
@@ -546,8 +525,6 @@ button {
   padding-bottom: 20px;
 }
 
-/* ---------- segmented control ---------- */
-
 .segmented {
   position: relative;
   display: inline-flex;
@@ -591,8 +568,6 @@ button {
 .segmented.icons .segment {
   padding: 4px 9px;
 }
-
-/* ---------- cards / chips / pills ---------- */
 
 .card-pad {
   padding: 20px;
@@ -674,8 +649,6 @@ button {
   height: 5px;
 }
 
-/* ---------- run cards (timeline) ---------- */
-
 .run-card {
   display: flex;
   align-items: stretch;
@@ -749,8 +722,6 @@ button {
   color: var(--text-3);
   margin-left: 2px;
 }
-
-/* ---------- compare ---------- */
 
 .compare-controls {
   display: flex;
@@ -931,8 +902,6 @@ button {
   font-size: 12px;
 }
 
-/* ---------- run detail table ---------- */
-
 .detail-grid {
   display: flex;
   gap: 24px;
@@ -994,8 +963,6 @@ button {
 .results-table tr.error-row .output-cell {
   color: var(--red);
 }
-
-/* ---------- discipline ---------- */
 
 .ledger-grid {
   display: grid;
@@ -1063,8 +1030,6 @@ button {
   font-style: normal;
 }
 
-/* ---------- chart / tooltip ---------- */
-
 .chart-card {
   padding: 20px 24px 14px;
   margin-bottom: 22px;
@@ -1121,8 +1086,6 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- empty / loading states ---------- */
-
 .state-card {
   display: flex;
   flex-direction: column;
@@ -1168,8 +1131,6 @@ button {
     animation-duration: 1.6s;
   }
 }
-
-/* ---------- misc ---------- */
 
 ::selection {
   background: rgba(201, 168, 118, 0.35);

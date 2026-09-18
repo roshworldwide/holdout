@@ -1,14 +1,3 @@
-"""Reference resolution for the CLI: evals, targets, and scorers from strings.
-
-Two reference grammars:
-
-- **Targets** — ``provider:model`` shorthand (``ollama:llama3.2``,
-  ``openai:gpt-4o-mini``, ``anthropic:claude-sonnet-4-6``) or a Python
-  reference ``package.module:attribute`` pointing at any Target object.
-- **Evals** — a ``.jsonl`` path (scorers supplied via ``--scorer``) or a
-  Python reference pointing at an Eval object.
-"""
-
 import importlib
 from pathlib import Path
 
@@ -22,7 +11,6 @@ _PROVIDERS = ("ollama", "openai", "anthropic")
 
 
 def load_python_ref(ref: str) -> object:
-    """Import ``package.module:attribute`` and return the attribute."""
     module_name, sep, attr = ref.partition(":")
     if not sep or not module_name or not attr:
         raise ValueError(f"invalid Python reference {ref!r}; expected 'package.module:attribute'")
@@ -37,7 +25,6 @@ def load_python_ref(ref: str) -> object:
 
 
 def make_scorer(spec: str) -> Scorer:
-    """Build a scorer from a CLI spec: ``exact``, ``exact-strict``, ``regex:<pattern>``."""
     if spec == "exact":
         return ExactMatch()
     if spec == "exact-strict":
@@ -54,7 +41,6 @@ def make_scorer(spec: str) -> Scorer:
 
 
 def load_eval(ref: str, scorer_specs: list[str] | None = None) -> Eval:
-    """Resolve an eval reference: a ``.jsonl`` path or ``module:attr``."""
     if ref.endswith(".jsonl"):
         path = Path(ref)
         if not path.exists():
@@ -75,11 +61,6 @@ def load_target(
     max_tokens: int = 1024,
     base_url: str | None = None,
 ) -> Target:
-    """Resolve a target reference: ``provider:model`` shorthand or ``module:attr``.
-
-    Provider options (``system``, ``temperature``, ...) apply only to the
-    shorthand form; a Python reference is returned as-is.
-    """
     prefix, sep, model = ref.partition(":")
     if sep and prefix in _PROVIDERS:
         if prefix == "ollama":
